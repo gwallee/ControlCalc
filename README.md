@@ -17,4 +17,16 @@ web app (PWA) — open it on a phone, add to home screen.
 ## Run
 
 Open `index.html` directly, or serve the folder over HTTPS to install it
-as a PWA.
+as a PWA (offline via `sw.js`).
+
+## Test
+
+    node test/run-tests.js
+
+## Triangle solver
+
+Type any values into a, b, c (sides) and A, B, C (angles, degrees; side a
+is opposite angle A). Amber solid = typed, blue dashed = solved. Tap ƒx on
+a solved value for formula → your numbers → result. Typing into a solved
+field makes it an input; the oldest typed value drops out. A third angle
+is skipped as an input (it adds nothing without a side).

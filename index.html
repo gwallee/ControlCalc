@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14181d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Robot Calc</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Robot Calc</h1>
+    <nav id="tabs"></nav>
+  </header>
+
+  <main id="view"></main>
+
+  <footer class="foot">build <span id="build"></span></footer>
+
+  <template id="tpl-triangle">
+    <section class="tri">
+      <svg class="tri-diagram" viewBox="0 0 320 190" aria-label="Triangle diagram"></svg>
+
+      <div class="tri-status" aria-live="polite"></div>
+      <div class="tri-pick" hidden></div>
+
+      <div class="tri-grid">
+        <div class="col-head">Sides</div>
+        <div class="col-head">Angles °</div>
+      </div>
+
+      <div class="tri-extras"></div>
+
+      <div class="tri-actions">
+        <button type="button" class="btn tri-clear">Clear</button>
+      </div>
+
+      <h2 class="work-head">Work</h2>
+      <div class="tri-work"></div>
+    </section>
+  </template>
+
+  <script src="js/version.js"></script>
+  <script src="js/triangle-math.js"></script>
+  <script src="js/triangle-ui.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

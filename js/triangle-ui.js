@@ -1,0 +1,263 @@
+/* Triangle solver screen. Math lives in triangle-math.js. */
+(function (root) {
+  'use strict';
+
+  var T = root.TriangleMath;
+  var STORE_KEY = 'robotcalc.triangle';
+  var EXTRAS = [{ key: 'area', label: 'Area' }, { key: 'perimeter', label: 'Perimeter' }];
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function load() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STORE_KEY));
+      if (s && Array.isArray(s.order) && s.text) return { order: s.order, text: s.text, pick: s.pick || 0 };
+    } catch (e) { /* no storage */ }
+    return { order: [], text: {}, pick: 0 };
+  }
+
+  function save(state) {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) { /* no storage */ }
+  }
+
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  function mount(container) {
+    var root = document.getElementById('tpl-triangle').content.firstElementChild.cloneNode(true);
+    container.appendChild(root);
+
+    var state = load();
+    var openWork = {};
+    var inputs = {}, fxButtons = {}, extraVals = {};
+    var grid = root.querySelector('.tri-grid');
+    var statusEl = root.querySelector('.tri-status');
+    var pickEl = root.querySelector('.tri-pick');
+    var workEl = root.querySelector('.tri-work');
+    var extrasEl = root.querySelector('.tri-extras');
+    var svg = root.querySelector('.tri-diagram');
+
+    function field(f) {
+      var wrap = el('div', 'fld');
+      var label = el('label', 'fld-box');
+      label.appendChild(el('span', 'fld-name', f));
+      var input = el('input', 'fld-input');
+      input.type = 'text';
+      input.inputMode = 'decimal';
+      input.autocomplete = 'off';
+      input.spellcheck = false;
+      input.setAttribute('aria-label', (T.isAngle(f) ? 'angle ' : 'side ') + f);
+      label.appendChild(input);
+      wrap.appendChild(label);
+      var fx = el('button', 'fx', 'ƒx');
+      fx.type = 'button';
+      fx.setAttribute('aria-label', 'Show work for ' + f);
+      fx.addEventListener('click', function () { showWork(f); });
+      wrap.appendChild(fx);
+
+      input.addEventListener('focus', function () {
+        // Typing into a solved field starts fresh; the solved value stays visible as a hint.
+        if (input.classList.contains('is-out')) {
+          input.placeholder = input.value;
+          input.value = '';
+        }
+      });
+      input.addEventListener('input', function () { onType(f, input.value); });
+      input.addEventListener('blur', function () { render(); });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') input.blur();
+      });
+
+      inputs[f] = input;
+      fxButtons[f] = fx;
+      return wrap;
+    }
+
+    for (var i = 0; i < 3; i++) {
+      grid.appendChild(field(T.SIDES[i]));
+      grid.appendChild(field(T.ANGLES[i]));
+    }
+
+    EXTRAS.forEach(function (x) {
+      var row = el('div', 'extra');
+      row.appendChild(el('span', 'extra-name', x.label));
+      var val = el('span', 'extra-val', '—');
+      row.appendChild(val);
+      var fx = el('button', 'fx', 'ƒx');
+      fx.type = 'button';
+      fx.setAttribute('aria-label', 'Show work for ' + x.label);
+      fx.addEventListener('click', function () { showWork(x.key); });
+      row.appendChild(fx);
+      extrasEl.appendChild(row);
+      extraVals[x.key] = val;
+      fxButtons[x.key] = fx;
+    });
+
+    root.querySelector('.tri-clear').addEventListener('click', function () {
+      state = { order: [], text: {}, pick: 0 };
+      openWork = {};
+      save(state);
+      render();
+    });
+
+    function onType(f, text) {
+      state.order = state.order.filter(function (k) { return k !== f; });
+      if (String(text).trim() === '') {
+        delete state.text[f];
+      } else {
+        state.text[f] = text;
+        state.order.unshift(f);
+      }
+      save(state);
+      render();
+    }
+
+    function showWork(key) {
+      openWork[key] = true;
+      render();
+      var d = workEl.querySelector('[data-key="' + key + '"]');
+      if (d) d.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function render() {
+      var valid = state.order.filter(function (f) { return isFinite(T.parseNum(state.text[f])); });
+      var picked = T.pickInputs(valid);
+      var given = {};
+      picked.forEach(function (f) { given[f] = T.parseNum(state.text[f]); });
+      var res = T.solve(given);
+      var sols = res.solutions || [];
+      if (state.pick >= sols.length) state.pick = 0;
+      var sol = sols[state.pick] || null;
+
+      // Status line
+      statusEl.className = 'tri-status' + (res.error ? (res.incomplete ? ' is-need' : ' is-err') : ' is-ok');
+      if (res.error) {
+        statusEl.textContent = picked.length === 0 ? 'Enter any 3 values (at least 1 side)' : res.error;
+      } else {
+        statusEl.textContent = res.case + ' · from ' + picked.join(', ') +
+          (sols.length > 1 ? ' · 2 solutions' : '');
+      }
+
+      // Ambiguous SSA toggle
+      pickEl.hidden = sols.length < 2;
+      pickEl.textContent = '';
+      if (sols.length > 1) {
+        var solvedAngle = T.ANGLES.filter(function (g) {
+          return picked.indexOf(g) < 0 && sols[0].work[g] && /asin/.test(sols[0].work[g].formula);
+        })[0];
+        sols.forEach(function (s, n) {
+          var b = el('button', 'seg' + (n === state.pick ? ' is-on' : ''),
+            (n + 1) + ': ' + solvedAngle + ' = ' + T.fmtField(solvedAngle, s.v[solvedAngle]));
+          b.type = 'button';
+          b.setAttribute('aria-pressed', n === state.pick);
+          b.addEventListener('click', function () { state.pick = n; save(state); render(); });
+          pickEl.appendChild(b);
+        });
+      }
+
+      // Fields
+      T.FIELDS.forEach(function (f) {
+        var input = inputs[f];
+        var isIn = picked.indexOf(f) >= 0;
+        var hasText = state.text[f] != null && state.text[f] !== '';
+        var bad = hasText && !isFinite(T.parseNum(state.text[f]));
+        var solved = !isIn && !bad && sol && sol.work[f];
+        var cls = 'fld-input' + (isIn || bad ? ' is-in' : ' is-out') + (bad ? ' is-bad' : '') +
+          (isIn && res.error && !res.incomplete ? ' is-bad' : '');
+        input.className = cls;
+        input.parentNode.parentNode.classList.toggle('has-work', !!solved);
+        fxButtons[f].disabled = !solved;
+        if (document.activeElement === input) return;
+        input.placeholder = '';
+        if (isIn || bad) input.value = state.text[f];
+        else input.value = solved ? T.fmt(sol.v[f]) : '';
+      });
+
+      EXTRAS.forEach(function (x) {
+        extraVals[x.key].textContent = sol ? T.fmt(sol.v[x.key]) : '—';
+        fxButtons[x.key].disabled = !sol;
+      });
+
+      renderWork(sol, picked);
+      drawDiagram(svg, sol, picked);
+    }
+
+    function renderWork(sol, picked) {
+      workEl.textContent = '';
+      if (!sol) {
+        workEl.appendChild(el('p', 'work-empty', 'Solved values show their formulas here.'));
+        return;
+      }
+      var keys = T.FIELDS.filter(function (f) { return picked.indexOf(f) < 0 && sol.work[f]; })
+        .concat(EXTRAS.map(function (x) { return x.key; }));
+      keys.forEach(function (k) {
+        var w = sol.work[k];
+        var d = el('details', 'work-item');
+        d.dataset.key = k;
+        d.open = !!openWork[k];
+        d.appendChild(el('summary', 'work-result', w.result));
+        d.appendChild(el('div', 'work-formula', w.formula));
+        d.appendChild(el('div', 'work-sub', w.sub));
+        d.appendChild(el('div', 'work-final', w.result));
+        d.addEventListener('toggle', function () { openWork[k] = d.open; });
+        workEl.appendChild(d);
+      });
+    }
+
+    render();
+  }
+
+  // --- diagram -------------------------------------------------------------
+
+  function svgEl(tag, attrs, text) {
+    var n = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  // Drawn to scale from the solution; a generic outline until solved.
+  function drawDiagram(svg, sol, picked) {
+    var W = 320, H = 190, pad = 30;
+    var v = sol ? sol.v : { a: 6.2, b: 5, c: 7, A: 57.4 };
+    var rad = v.A * Math.PI / 180;
+    var P = { A: [0, 0], B: [v.c, 0], C: [v.b * Math.cos(rad), v.b * Math.sin(rad)] };
+
+    var xs = [P.A[0], P.B[0], P.C[0]], ys = [P.A[1], P.B[1], P.C[1]];
+    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
+    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
+    var s = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
+    var offX = (W - (maxX - minX) * s) / 2, offY = (H - (maxY - minY) * s) / 2;
+    function map(p) { return [offX + (p[0] - minX) * s, H - offY - (p[1] - minY) * s]; }
+    var Q = { A: map(P.A), B: map(P.B), C: map(P.C) };
+    var cx = (Q.A[0] + Q.B[0] + Q.C[0]) / 3, cy = (Q.A[1] + Q.B[1] + Q.C[1]) / 3;
+
+    function away(p, dist) {
+      var dx = p[0] - cx, dy = p[1] - cy, len = Math.hypot(dx, dy) || 1;
+      return [p[0] + dx / len * dist, p[1] + dy / len * dist];
+    }
+
+    svg.textContent = '';
+    svg.appendChild(svgEl('polygon', {
+      'class': 'dg-tri' + (sol ? '' : ' is-blank'),
+      points: [Q.A, Q.B, Q.C].map(function (p) { return p.join(','); }).join(' ')
+    }));
+
+    var hl = function (f) { return picked.indexOf(f) >= 0 ? ' is-in' : ''; };
+    // Side x is opposite vertex X.
+    [['a', 'B', 'C'], ['b', 'A', 'C'], ['c', 'A', 'B']].forEach(function (e) {
+      var m = [(Q[e[1]][0] + Q[e[2]][0]) / 2, (Q[e[1]][1] + Q[e[2]][1]) / 2];
+      var p = away(m, 14);
+      svg.appendChild(svgEl('text', { 'class': 'dg-side' + hl(e[0]), x: p[0], y: p[1] }, e[0]));
+    });
+    T.ANGLES.forEach(function (g) {
+      var p = away(Q[g], 16);
+      svg.appendChild(svgEl('text', { 'class': 'dg-vert' + hl(g), x: p[0], y: p[1] }, g));
+    });
+  }
+
+  root.TriangleUI = { mount: mount };
+})(this);
