@@ -37,8 +37,11 @@
 
   // order: typed fields, most recent first. Returns the fields to solve from:
   // the 3 most recent, skipping a 3rd angle (it adds nothing without a side).
-  function pickInputs(order) {
-    var picked = [], angles = 0;
+  // pinned: fields that are always inputs (e.g. ['C'] for a right triangle);
+  // they count toward the 3 and toward the angle limit.
+  function pickInputs(order, pinned) {
+    var picked = (pinned || []).slice();
+    var angles = picked.filter(isAngle).length;
     for (var i = 0; i < order.length && picked.length < 3; i++) {
       var f = order[i];
       if (FIELDS.indexOf(f) < 0 || picked.indexOf(f) >= 0) continue;

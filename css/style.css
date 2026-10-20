@@ -74,6 +74,10 @@ main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
 
 /* --- triangle --- */
 
+.tri-modes { display: flex; gap: 8px; margin-bottom: 8px; }
+.tri-modes .seg { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.mode-icon { width: 24px; height: 20px; fill: currentColor; }
+
 .tri-stage {
   position: relative;
   height: 330px;
@@ -93,11 +97,10 @@ main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
 /* input boxes sit on the drawing; positioned by triangle-ui.js */
 .fld {
   position: absolute;
-  font-size: 17px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   border-radius: var(--radius);
-  transition: left .2s, top .2s;
 }
 
 .fld-name {
@@ -138,6 +141,18 @@ main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
   font-style: italic;
 }
 .fld.is-out .fld-name { color: var(--out); }
+
+.fld[hidden] { display: none; }
+.fld.is-angle .fld-input { padding-right: 16px; }
+.fld-unit {
+  position: absolute;
+  right: 7px;
+  top: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  pointer-events: none;
+  color: var(--muted);
+}
 
 .fld-input.is-bad { border-color: var(--err); }
 .fld-input:focus { border-style: solid; border-color: var(--text); }

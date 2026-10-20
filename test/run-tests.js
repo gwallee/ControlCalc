@@ -39,6 +39,12 @@ test('pickInputs skips a third angle', function () {
   assert.deepStrictEqual(T.pickInputs(['C', 'B', 'A']), ['C', 'B']);
 });
 
+test('pickInputs with a pinned right angle', function () {
+  assert.deepStrictEqual(T.pickInputs(['a', 'b', 'c'], ['C']), ['C', 'a', 'b']);
+  assert.deepStrictEqual(T.pickInputs(['A', 'B', 'a'], ['C']), ['C', 'A', 'a']);
+  assert.deepStrictEqual(T.pickInputs(['C', 'b'], ['C']), ['C', 'b']);
+});
+
 // --- cases ---
 
 test('SSS 3-4-5', function () {
