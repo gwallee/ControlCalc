@@ -3,7 +3,7 @@
 Shop-floor geometry calculator for robot integrators. Installable, offline
 web app (PWA) — open it on a phone, add to home screen.
 
-## Planned calcs
+## Calcs
 
 - **Triangle solver** — enter any 3 values; edit any field without
   clearing. The 3 most recently entered values are the inputs, the rest
@@ -11,8 +11,8 @@ web app (PWA) — open it on a phone, add to home screen.
   the ambiguous SSA case (shows both solutions).
 - **Circle in V** — round part in a V nest: enter any 2 of included angle,
   radius/diameter, and the distances from the vertex; the rest are solved.
-- **Stack index** — row / column / layer (and X/Y/Z offset from pitch)
-  from a part count. Row- or column-first, 0/1-based, serpentine.
+- **Stack** — part # ↔ col / row / layer for placing parts in a grid, with
+  optional layers. Fill across or down, count from 1 or 0.
 
 ## Run
 
@@ -55,3 +55,21 @@ are from the V's vertex:
 | e | contact height above the vertex, under More: `t·cos(θ/2)` |
 
 w and e are letters on the drawing only; their values are under More.
+
+## Stack
+
+For placing parts in a grid with a robot while tracking only the part
+count. Enter columns C and rows R, then either the part # n (col / row /
+layer solve) or a position (n solves). Leave the second dimension blank
+(R when filling across, C when filling down) for no layers.
+
+Formulas, shown in FANUC TP style (DIV / MOD), filling across and counting
+from 1:
+
+    col   = (n − 1) MOD C + 1
+    row   = ((n − 1) DIV C) MOD R + 1
+    layer = (n − 1) DIV (C·R) + 1
+    n     = (layer − 1)·C·R + (row − 1)·C + col
+
+With no layers: `row = (n − 1) DIV C + 1`. Filling down swaps the roles of
+col / C and row / R. Counting from 0 drops the −1 / +1.

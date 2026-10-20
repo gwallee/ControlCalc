@@ -14,6 +14,8 @@ var FILES = [
   'js/triangle-ui.js',
   'js/vee-math.js',
   'js/vee-ui.js',
+  'js/stack-math.js',
+  'js/stack-ui.js',
   'js/app.js',
   'manifest.webmanifest',
   'icon.svg',

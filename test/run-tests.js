@@ -215,5 +215,60 @@ test('vee: round trip over every input pair', function () {
   }
 });
 
+// ===== Stack index =====
+var ST = require('../js/stack-math.js');
+function pos(res) { assert.ok(!res.error, res.error); return res.solutions[0].v; }
+
+test('stack: spreadsheet example 5 cols × 1 row, part 11', function () {
+  var v = pos(ST.solve({ C: 5, R: 1, n: 11 }, { across: true, base: 1 }));
+  assert.deepStrictEqual([v.col, v.row, v.layer], [1, 1, 3]);
+});
+
+test('stack: across, 3 × 2, layers', function () {
+  var o = { across: true, base: 1 };
+  var seq = [];
+  for (var n = 1; n <= 7; n++) { var v = pos(ST.solve({ C: 3, R: 2, n: n }, o)); seq.push([v.col, v.row, v.layer].join()); }
+  assert.deepStrictEqual(seq, ['1,1,1', '2,1,1', '3,1,1', '1,2,1', '2,2,1', '3,2,1', '1,1,2']);
+});
+
+test('stack: down fill, base 0, no layers', function () {
+  var v = pos(ST.solve({ R: 4, n: 9 }, { across: false, base: 0 }));
+  assert.deepStrictEqual([v.row, v.col, v.layer], [1, 2, undefined]);
+});
+
+test('stack: work is FANUC-style', function () {
+  var w = ST.solve({ C: 5, R: 2, n: 11 }, { across: true, base: 1 }).solutions[0].work;
+  assert.strictEqual(w.col.formula, 'col = (n − 1) MOD C + 1');
+  assert.strictEqual(w.col.sub, 'col = (11 − 1) MOD 5 + 1');
+  assert.strictEqual(w.row.formula, 'row = ((n − 1) DIV C) MOD R + 1');
+  assert.strictEqual(w.layer.sub, 'layer = (11 − 1) DIV (5·2) + 1');
+});
+
+test('stack: bad input', function () {
+  assert.ok(ST.solve({ R: 2, n: 3 }, { across: true, base: 1 }).incomplete);
+  assert.ok(/whole/.test(ST.solve({ C: 2.5, n: 3 }, { across: true, base: 1 }).error));
+  assert.ok(/≥ 1/.test(ST.solve({ C: 3, n: 0 }, { across: true, base: 1 }).error));
+  assert.ok(/≤ 3/.test(ST.solve({ C: 3, R: 2, col: 4, row: 1, layer: 1 }, { across: true, base: 1 }).error));
+});
+
+test('stack: position → part # round trip', function () {
+  [true, false].forEach(function (across) {
+    [0, 1].forEach(function (base) {
+      [[3, 2], [5, 1], [1, 4], [4, null], [null, 3]].forEach(function (dims) {
+        var C = dims[0], R = dims[1];
+        if (across ? C == null : R == null) return;
+        var o = { across: across, base: base };
+        for (var n = base; n < base + 30; n++) {
+          var g = {}; if (C != null) g.C = C; if (R != null) g.R = R;
+          g.n = n;
+          var v = pos(ST.solve(g, o));
+          delete g.n; g.col = v.col; g.row = v.row; if (v.layer != null) g.layer = v.layer;
+          assert.strictEqual(pos(ST.solve(g, o)).n, n, JSON.stringify([o, g]));
+        }
+      });
+    });
+  });
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

@@ -66,7 +66,8 @@
   function paint(fd, s) {
     var isIn = s.typed || s.bad;
     fd.input.className = 'fld-input' + (isIn ? ' is-in' : ' is-out') + (s.bad || (s.typed && s.err) ? ' is-bad' : '');
-    fd.box.className = 'fld' + (fd.angle ? ' is-angle' : '') + (isIn ? ' is-in' : ' is-out');
+    fd.box.classList.toggle('is-in', isIn);
+    fd.box.classList.toggle('is-out', !isIn);
     if (document.activeElement === fd.input) return;
     fd.input.placeholder = '';
     fd.input.value = isIn ? s.text : (s.solved == null ? '' : s.solved);

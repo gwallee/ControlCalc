@@ -5,7 +5,8 @@
   // Add new calcs here.
   var CALCS = [
     { id: 'triangle', label: 'Triangle', mount: function (el) { TriangleUI.mount(el); } },
-    { id: 'vee', label: 'Circle in V', mount: function (el) { VeeUI.mount(el); } }
+    { id: 'vee', label: 'Circle in V', mount: function (el) { VeeUI.mount(el); } },
+    { id: 'stack', label: 'Stack', mount: function (el) { StackUI.mount(el); } }
   ];
 
   document.getElementById('build').textContent = ROBOTCALC_BUILD;
