@@ -71,6 +71,7 @@
   <template id="tpl-stack">
     <section class="stack">
       <div class="stack-opts"></div>
+      <div class="stack-opts stack-opts2"></div>
 
       <div class="stack-row stack-dims"></div>
 
@@ -85,7 +86,13 @@
 
       <div class="calc-actions">
         <button type="button" class="btn calc-work-btn">ƒx Work</button>
+        <button type="button" class="btn stack-xyz-btn" aria-expanded="false">XYZ</button>
         <button type="button" class="btn calc-clear">Clear</button>
+      </div>
+
+      <div class="stack-xyz" hidden>
+        <div class="stack-row stack-pitch"></div>
+        <div class="stack-row stack-off"></div>
       </div>
 
       <h2 class="work-head">Work</h2>

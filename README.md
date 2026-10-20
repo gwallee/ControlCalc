@@ -12,7 +12,7 @@ web app (PWA) — open it on a phone, add to home screen.
 - **Circle in V** — round part in a V nest: enter any 2 of included angle,
   radius/diameter, and the distances from the vertex; the rest are solved.
 - **Stack** — part # ↔ col / row / layer for placing parts in a grid, with
-  optional layers. Fill across or down, count from 1 or 0.
+  optional layers, serpentine, and XYZ offsets from a pitch.
 
 ## Run
 
@@ -63,13 +63,19 @@ count. Enter columns C and rows R, then either the part # n (col / row /
 layer solve) or a position (n solves). Leave the second dimension blank
 (R when filling across, C when filling down) for no layers.
 
-Formulas, shown in FANUC TP style (DIV / MOD), filling across and counting
-from 1:
+n counts parts already on the stack, so the first spot is n = 0 (switch
+to "1st part = 1" if you number from 1). Positions are always 1-based.
+Formulas, shown in FANUC TP style (DIV / MOD), filling across:
 
-    col   = (n − 1) MOD C + 1
-    row   = ((n − 1) DIV C) MOD R + 1
-    layer = (n − 1) DIV (C·R) + 1
-    n     = (layer − 1)·C·R + (row − 1)·C + col
+    col   = n MOD C + 1
+    row   = (n DIV C) MOD R + 1
+    layer = n DIV (C·R) + 1
+    n     = (layer − 1)·C·R + (row − 1)·C + col − 1
 
-With no layers: `row = (n − 1) DIV C + 1`. Filling down swaps the roles of
-col / C and row / R. Counting from 0 drops the −1 / +1.
+With no layers: `row = n DIV C + 1`. Filling down swaps the roles of
+col / C and row / R. With 1st part = 1, n becomes (n − 1).
+
+- **Serpentine** — every even row (col, filling down) runs back:
+  `col = C − n MOD C`. Each layer starts again at 1,1.
+- **XYZ** — enter pitches px / py / pz (negative for direction):
+  `X = (col − 1)·px`, `Y = (row − 1)·py`, `Z = (layer − 1)·pz`.

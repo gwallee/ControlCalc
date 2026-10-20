@@ -2,7 +2,8 @@
  * Grid size (C, R) and either the part # or the position are inputs; the
  * other side is solved. Typing into a position box when the part # was the
  * input keeps the other positions (they become inputs too), so nothing has
- * to be re-entered. A grid preview shades placed parts and marks this one. */
+ * to be re-entered. A grid preview shades placed parts and marks this one.
+ * XYZ (behind a button) takes pitches and shows the offsets. */
 (function (root) {
   'use strict';
 
@@ -10,9 +11,11 @@
   var el = K.el, svgEl = K.svgEl;
   var STORE_KEY = 'robotcalc.stack';
   var LABELS = {
-    C: 'columns C', R: 'rows R', n: 'part number n', col: 'column col', row: 'row row', layer: 'layer layer'
+    C: 'columns C', R: 'rows R', n: 'part number n', col: 'column col', row: 'row row', layer: 'layer layer',
+    px: 'X pitch px', py: 'Y pitch py', pz: 'Z pitch pz', X: 'X offset X', Y: 'Y offset Y', Z: 'Z offset Z'
   };
-  var NAMES = { C: 'C', R: 'R', n: 'n', col: 'col', row: 'row', layer: 'lyr' };
+  var NAMES = { C: 'C', R: 'R', n: 'n', col: 'col', row: 'row', layer: 'layer', px: 'px', py: 'py', pz: 'pz', X: 'X', Y: 'Y', Z: 'Z' };
+  var INPUTS = ['C', 'R', 'px', 'py', 'pz']; // always typed when filled
   var MAX_DRAW = 12; // rows/cols drawn when that side has no limit
 
   function load() {
@@ -20,7 +23,8 @@
     var ok = Array.isArray(s.order) && s.text;
     return {
       order: ok ? s.order : [], text: ok ? s.text : {},
-      across: s.across !== false, base: s.base === 0 ? 0 : 1
+      // "first" replaced build 8's "base"; a fresh default of 0 counts parts on the stack.
+      across: s.across !== false, first: s.first === 1 ? 1 : 0, snake: !!s.snake, xyz: !!s.xyz
     };
   }
 
@@ -35,6 +39,7 @@
     var workEl = root.querySelector('.calc-work');
     var svg = root.querySelector('.calc-diagram');
     var gridNote = root.querySelector('.stack-note');
+    var xyzEl = root.querySelector('.stack-xyz'), xyzBtn = root.querySelector('.stack-xyz-btn');
     var current = { sol: null, mode: 'n' };
 
     function save() { K.save(STORE_KEY, st); }
@@ -50,11 +55,17 @@
     }
     ['C', 'R', 'n'].forEach(function (f) { addField(f, root.querySelector('.stack-dims')); });
     M.POS.forEach(function (f) { addField(f, root.querySelector('.stack-pos')); });
+    ['px', 'py', 'pz'].forEach(function (f) { addField(f, root.querySelector('.stack-pitch')); });
+    ['X', 'Y', 'Z'].forEach(function (f) {
+      addField(f, root.querySelector('.stack-off'));
+      fields[f].input.readOnly = true; // solved only
+    });
 
-    // Toggles: fill direction and counting base.
+    // Toggles: fill direction, serpentine, and the first part's number.
     var toggles = {
       across: [[true, '→ Across'], [false, '↓ Down']],
-      base: [[1, 'From 1'], [0, 'From 0']]
+      snake: [[true, '⇄ Serpentine']],
+      first: [[0, '1st part = 0'], [1, '1st part = 1']]
     };
     Object.keys(toggles).forEach(function (key) {
       var group = el('div', 'calc-modes');
@@ -64,19 +75,25 @@
         b.dataset.key = key;
         b.dataset.val = String(opt[0]);
         b.addEventListener('click', function () {
-          st[key] = opt[0];
+          st[key] = toggles[key].length === 1 ? !st[key] : opt[0]; // a lone button toggles
           save();
           render();
         });
         group.appendChild(b);
       });
-      root.querySelector('.stack-opts').appendChild(group);
+      root.querySelector(key === 'first' ? '.stack-opts2' : '.stack-opts').appendChild(group);
     });
 
     root.querySelector('.calc-work-btn').addEventListener('click', function () {
       Object.keys(current.sol ? current.sol.work : {}).forEach(function (k) { openWork[k] = true; });
       render();
       root.querySelector('.work-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    xyzBtn.addEventListener('click', function () {
+      st.xyz = !st.xyz;
+      save();
+      render();
     });
 
     root.querySelector('.calc-clear').addEventListener('click', function () {
@@ -124,11 +141,11 @@
       var last = st.order.filter(function (f) { return f === 'n' || M.POS.indexOf(f) >= 0; })[0];
       var mode = last && last !== 'n' ? 'pos' : 'n';
       var given = {}, used = [];
-      ['C', 'R'].forEach(function (f) { if (num(f) != null) { given[f] = num(f); used.push(f); } });
+      INPUTS.forEach(function (f) { if (num(f) != null) { given[f] = num(f); used.push(f); } });
       (mode === 'n' ? ['n'] : M.POS).forEach(function (f) {
         if (num(f) != null) { given[f] = num(f); used.push(f); }
       });
-      var opts = { across: st.across, base: st.base };
+      var opts = { across: st.across, first: st.first, snake: st.snake };
       var res = M.solve(given, opts);
       var sol = res.solutions ? res.solutions[0] : null;
       current = { sol: sol, mode: mode };
@@ -143,37 +160,40 @@
       statusEl.textContent = res.error
         ? res.error
         : (mode === 'n' ? 'Part ' + sol.v.n + ' → position' : 'Position → part ' + sol.v.n) +
-          (sol.layered ? '' : ' · no layers');
+          (sol.layered ? '' : ' · no layers') + (st.snake ? ' · serpentine' : '');
+
+      xyzEl.hidden = !st.xyz;
+      xyzBtn.classList.toggle('is-on', st.xyz);
+      xyzBtn.setAttribute('aria-expanded', st.xyz);
 
       Object.keys(fields).forEach(function (f) {
         var t = st.text[f], hasText = t != null && String(t).trim() !== '';
-        var dim = f === 'C' || f === 'R';
-        var typed = dim ? hasText : used.indexOf(f) >= 0;
+        var typed = INPUTS.indexOf(f) >= 0 ? hasText : used.indexOf(f) >= 0;
         K.paint(fields[f], {
           typed: typed,
           text: t,
           bad: hasText && !isFinite(M.parseNum(t)),
           err: res.error && !res.incomplete,
-          solved: sol && sol.work[f] ? String(sol.v[f]) : null
+          solved: sol && sol.work[f] ? M.fmt(sol.v[f]) : null
         });
       });
       // The optional dimension: blank means no layers.
       fields[st.across ? 'R' : 'C'].input.placeholder =
         document.activeElement === fields[st.across ? 'R' : 'C'].input ? '' : 'none';
 
-      K.renderWork(workEl, sol, ['col', 'row', 'layer', 'n'].filter(function (f) {
+      K.renderWork(workEl, sol, ['col', 'row', 'layer', 'n', 'X', 'Y', 'Z'].filter(function (f) {
         return used.indexOf(f) < 0;
       }), openWork);
       drawGrid();
     }
 
     function drawGrid() {
-      var sol = current.sol, b = st.base;
+      var sol = current.sol;
       svg.textContent = '';
       gridNote.textContent = '';
       if (!sol) { svg.style.height = '0'; return; }
       var v = sol.v;
-      var col = v.col - b, row = v.row - b; // 0-based cell
+      var col = v.col - 1, row = v.row - 1; // 0-based cell
       var cols = v.C || Math.min(Math.max(col + 2, 4), MAX_DRAW);
       var rows = v.R || Math.min(Math.max(row + 2, 4), MAX_DRAW);
       // Unlimited side: slide the window so the current cell stays in view.
@@ -189,13 +209,19 @@
       svg.setAttribute('viewBox', '0 0 ' + W + ' ' + (gh + 2));
       svg.style.height = (gh + 2) + 'px';
       var innerN = st.across ? (v.C || 0) : (v.R || 0);
+      // Order index within the layer; serpentine runs every other line back.
+      function order(cc, rr) {
+        var line = st.across ? rr : cc, along = st.across ? cc : rr;
+        if (st.snake && line % 2 === 1) along = innerN - 1 - along;
+        return line * innerN + along;
+      }
+      var me = order(col, row);
       for (var r = 0; r < rows; r++) {
         for (var c = 0; c < cols; c++) {
           var cc = c + c0, rr = r + r0;
           // Order index of this cell within its layer.
-          var k = st.across ? rr * innerN + cc : cc * innerN + rr;
+          var k = order(cc, rr);
           var here = cc === col && rr === row;
-          var me = st.across ? row * innerN + col : col * innerN + row;
           var cls = here ? 'cell is-here' : k < me ? 'cell is-done' : 'cell';
           svg.appendChild(svgEl('rect', {
             'class': cls, x: ox + c * cell + 1, y: r * cell + 1, width: cell - 2, height: cell - 2, rx: Math.min(6, cell / 5)
@@ -203,14 +229,13 @@
           if (cell >= 26) {
             svg.appendChild(svgEl('text', {
               'class': 'cell-n' + (here ? ' is-here' : ''), x: ox + (c + 0.5) * cell, y: (r + 0.5) * cell
-            }, String(k + b)));
+            }, String(k + st.first)));
           }
         }
       }
       gridNote.textContent = (sol.layered ? 'Layer ' + v.layer + ' · ' : '') +
         'col 1 left, row 1 top' + (c0 || r0 ? ' · showing part of an unlimited grid' : '') +
         (cell >= 26 ? ' · numbers = order' + (sol.layered ? ' in layer' : '') : '');
-      if (b === 0) gridNote.textContent = gridNote.textContent.replace(/1 left, row 1/, '0 left, row 0');
     }
 
     render();

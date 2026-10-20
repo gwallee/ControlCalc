@@ -218,53 +218,91 @@ test('vee: round trip over every input pair', function () {
 // ===== Stack index =====
 var ST = require('../js/stack-math.js');
 function pos(res) { assert.ok(!res.error, res.error); return res.solutions[0].v; }
+var ONE = { across: true, first: 1 }, ZERO = { across: true, first: 0 };
 
-test('stack: spreadsheet example 5 cols × 1 row, part 11', function () {
-  var v = pos(ST.solve({ C: 5, R: 1, n: 11 }, { across: true, base: 1 }));
+test('stack: spreadsheet example 5 cols × 1 row, part 11 (first part = 1)', function () {
+  var v = pos(ST.solve({ C: 5, R: 1, n: 11 }, ONE));
   assert.deepStrictEqual([v.col, v.row, v.layer], [1, 1, 3]);
 });
 
+test('stack: counting parts on the stack, 0 is the first spot', function () {
+  var v = pos(ST.solve({ C: 5, R: 2, n: 0 }, ZERO));
+  assert.deepStrictEqual([v.col, v.row, v.layer], [1, 1, 1]);
+  v = pos(ST.solve({ C: 5, R: 2, n: 10 }, ZERO));
+  assert.deepStrictEqual([v.col, v.row, v.layer], [1, 1, 2]);
+});
+
 test('stack: across, 3 × 2, layers', function () {
-  var o = { across: true, base: 1 };
   var seq = [];
-  for (var n = 1; n <= 7; n++) { var v = pos(ST.solve({ C: 3, R: 2, n: n }, o)); seq.push([v.col, v.row, v.layer].join()); }
+  for (var n = 0; n < 7; n++) { var v = pos(ST.solve({ C: 3, R: 2, n: n }, ZERO)); seq.push([v.col, v.row, v.layer].join()); }
   assert.deepStrictEqual(seq, ['1,1,1', '2,1,1', '3,1,1', '1,2,1', '2,2,1', '3,2,1', '1,1,2']);
 });
 
-test('stack: down fill, base 0, no layers', function () {
-  var v = pos(ST.solve({ R: 4, n: 9 }, { across: false, base: 0 }));
-  assert.deepStrictEqual([v.row, v.col, v.layer], [1, 2, undefined]);
+test('stack: serpentine runs even rows back, restarts each layer', function () {
+  var seq = [];
+  for (var n = 0; n < 10; n++) {
+    var v = pos(ST.solve({ C: 3, R: 3, n: n }, { across: true, first: 0, snake: true }));
+    seq.push(v.col + ',' + v.row + ',' + v.layer);
+  }
+  assert.deepStrictEqual(seq, ['1,1,1', '2,1,1', '3,1,1', '3,2,1', '2,2,1', '1,2,1', '1,3,1', '2,3,1', '3,3,1', '1,1,2']);
+});
+
+test('stack: serpentine down, no layers', function () {
+  var seq = [];
+  for (var n = 0; n < 5; n++) {
+    var v = pos(ST.solve({ R: 2, n: n }, { across: false, first: 0, snake: true }));
+    seq.push(v.col + ',' + v.row);
+  }
+  assert.deepStrictEqual(seq, ['1,1', '1,2', '2,2', '2,1', '3,1']);
 });
 
 test('stack: work is FANUC-style', function () {
-  var w = ST.solve({ C: 5, R: 2, n: 11 }, { across: true, base: 1 }).solutions[0].work;
+  var w = ST.solve({ C: 5, R: 2, n: 11 }, ONE).solutions[0].work;
   assert.strictEqual(w.col.formula, 'col = (n − 1) MOD C + 1');
   assert.strictEqual(w.col.sub, 'col = (11 − 1) MOD 5 + 1');
   assert.strictEqual(w.row.formula, 'row = ((n − 1) DIV C) MOD R + 1');
   assert.strictEqual(w.layer.sub, 'layer = (11 − 1) DIV (5·2) + 1');
+  w = ST.solve({ C: 5, R: 2, n: 7 }, { across: true, first: 0, snake: true }).solutions[0].work;
+  assert.strictEqual(w.col.formula, 'col = C − n MOD C');
+  assert.strictEqual(w.col.result, 'col = 3  (row 2 runs back)');
+});
+
+test('stack: XYZ offsets', function () {
+  var v = pos(ST.solve({ C: 5, R: 2, n: 13, px: 50, py: -40, pz: 12.5 }, ZERO));
+  assert.deepStrictEqual([v.col, v.row, v.layer], [4, 1, 2]);
+  near(v.X, 150); near(v.Y, 0); near(v.Z, 12.5);
+  var w = ST.solve({ C: 5, R: 2, n: 13, px: 50 }, ZERO).solutions[0].work;
+  assert.strictEqual(w.X.sub, 'X = (4 − 1)·50');
+  assert.strictEqual(ST.solve({ C: 5, n: 3, pz: 10 }, ZERO).solutions[0].v.Z, undefined);
 });
 
 test('stack: bad input', function () {
-  assert.ok(ST.solve({ R: 2, n: 3 }, { across: true, base: 1 }).incomplete);
-  assert.ok(/whole/.test(ST.solve({ C: 2.5, n: 3 }, { across: true, base: 1 }).error));
-  assert.ok(/≥ 1/.test(ST.solve({ C: 3, n: 0 }, { across: true, base: 1 }).error));
-  assert.ok(/≤ 3/.test(ST.solve({ C: 3, R: 2, col: 4, row: 1, layer: 1 }, { across: true, base: 1 }).error));
+  assert.ok(ST.solve({ R: 2, n: 3 }, ZERO).incomplete);
+  assert.ok(/whole/.test(ST.solve({ C: 2.5, n: 3 }, ZERO).error));
+  assert.ok(/≥ 0/.test(ST.solve({ C: 3, n: -1 }, ZERO).error));
+  assert.ok(/≥ 1/.test(ST.solve({ C: 3, n: 0 }, ONE).error));
+  assert.ok(/≤ 3/.test(ST.solve({ C: 3, R: 2, col: 4, row: 1, layer: 1 }, ZERO).error));
 });
 
-test('stack: position → part # round trip', function () {
+test('stack: position → part # round trip, every option', function () {
   [true, false].forEach(function (across) {
-    [0, 1].forEach(function (base) {
-      [[3, 2], [5, 1], [1, 4], [4, null], [null, 3]].forEach(function (dims) {
-        var C = dims[0], R = dims[1];
-        if (across ? C == null : R == null) return;
-        var o = { across: across, base: base };
-        for (var n = base; n < base + 30; n++) {
-          var g = {}; if (C != null) g.C = C; if (R != null) g.R = R;
-          g.n = n;
-          var v = pos(ST.solve(g, o));
-          delete g.n; g.col = v.col; g.row = v.row; if (v.layer != null) g.layer = v.layer;
-          assert.strictEqual(pos(ST.solve(g, o)).n, n, JSON.stringify([o, g]));
-        }
+    [0, 1].forEach(function (first) {
+      [false, true].forEach(function (snake) {
+        [[3, 2], [5, 1], [1, 4], [4, null], [null, 3], [3, 3]].forEach(function (dims) {
+          var C = dims[0], R = dims[1];
+          if (across ? C == null : R == null) return;
+          var o = { across: across, first: first, snake: snake }, seen = {};
+          for (var n = first; n < first + 40; n++) {
+            var g = {}; if (C != null) g.C = C; if (R != null) g.R = R;
+            g.n = n;
+            var v = pos(ST.solve(g, o));
+            var key = [v.col, v.row, v.layer].join();
+            assert.ok(!seen[key], 'two parts in one spot ' + key + ' ' + JSON.stringify(o));
+            seen[key] = 1;
+            delete g.n; g.col = v.col; g.row = v.row; if (v.layer != null) g.layer = v.layer;
+            assert.strictEqual(pos(ST.solve(g, o)).n, n, JSON.stringify([o, g]));
+          }
+        });
       });
     });
   });
