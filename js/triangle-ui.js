@@ -219,19 +219,28 @@
     return n;
   }
 
-  // Drawn to scale from the solution; a generic outline until solved.
+  var BLANK = T.solve({ a: 6, b: 5, c: 7 }).solutions[0].v;
+  var MIN_ASPECT = 0.18; // flatter triangles get stretched vertically
+
+  // Drawn to scale from the solution (longest side as the base); very flat
+  // triangles are stretched and flagged. A generic outline until solved.
   function drawDiagram(svg, sol, picked) {
     var W = 320, H = 190, pad = 30;
-    var v = sol ? sol.v : { a: 6.2, b: 5, c: 7, A: 57.4 };
-    var rad = v.A * Math.PI / 180;
-    var P = { A: [0, 0], B: [v.c, 0], C: [v.b * Math.cos(rad), v.b * Math.sin(rad)] };
+    var v = sol ? sol.v : BLANK;
+    var s = [v.a, v.b, v.c], g = [v.A, v.B, v.C];
+    var L = s.indexOf(Math.max.apply(null, s));
+    var j = (L + 1) % 3, k = (L + 2) % 3;
+    var rad = g[j] * Math.PI / 180;
+    var P = {};
+    P[T.ANGLES[j]] = [0, 0];
+    P[T.ANGLES[k]] = [s[L], 0];
+    P[T.ANGLES[L]] = [s[k] * Math.cos(rad), s[k] * Math.sin(rad)];
 
-    var xs = [P.A[0], P.B[0], P.C[0]], ys = [P.A[1], P.B[1], P.C[1]];
-    var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
-    var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
-    var s = Math.min((W - 2 * pad) / (maxX - minX || 1), (H - 2 * pad) / (maxY - minY || 1));
-    var offX = (W - (maxX - minX) * s) / 2, offY = (H - (maxY - minY) * s) / 2;
-    function map(p) { return [offX + (p[0] - minX) * s, H - offY - (p[1] - minY) * s]; }
+    var w = s[L], h = P[T.ANGLES[L]][1];
+    var stretch = h < MIN_ASPECT * w ? MIN_ASPECT * w / h : 1;
+    var sc = Math.min((W - 2 * pad) / w, (H - 2 * pad) / (h * stretch));
+    var offX = (W - w * sc) / 2, offY = (H - h * stretch * sc) / 2;
+    function map(p) { return [offX + p[0] * sc, H - offY - p[1] * stretch * sc]; }
     var Q = { A: map(P.A), B: map(P.B), C: map(P.C) };
     var cx = (Q.A[0] + Q.B[0] + Q.C[0]) / 3, cy = (Q.A[1] + Q.B[1] + Q.C[1]) / 3;
 
@@ -245,6 +254,28 @@
       'class': 'dg-tri' + (sol ? '' : ' is-blank'),
       points: [Q.A, Q.B, Q.C].map(function (p) { return p.join(','); }).join(' ')
     }));
+
+    // Right-angle squares, built along the drawn edges so they survive stretching.
+    T.ANGLES.forEach(function (gName, i) {
+      if (Math.abs(g[i] - 90) > 1e-6) return;
+      var o = [(i + 1) % 3, (i + 2) % 3].map(function (n) {
+        var p = Q[gName], q = Q[T.ANGLES[n]];
+        var dx = q[0] - p[0], dy = q[1] - p[1], len = Math.hypot(dx, dy) || 1;
+        var m = Math.min(12, len / 3);
+        return [dx / len * m, dy / len * m];
+      });
+      var p = Q[gName];
+      svg.appendChild(svgEl('polyline', {
+        'class': 'dg-right',
+        points: [[p[0] + o[0][0], p[1] + o[0][1]],
+          [p[0] + o[0][0] + o[1][0], p[1] + o[0][1] + o[1][1]],
+          [p[0] + o[1][0], p[1] + o[1][1]]].map(function (q) { return q.join(','); }).join(' ')
+      }));
+    });
+
+    if (sol && stretch > 1) {
+      svg.appendChild(svgEl('text', { 'class': 'dg-note', x: W - 8, y: 14 }, 'not to scale'));
+    }
 
     var hl = function (f) { return picked.indexOf(f) >= 0 ? ' is-in' : ''; };
     // Side x is opposite vertex X.
