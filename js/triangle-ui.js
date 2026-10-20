@@ -220,14 +220,18 @@
   }
 
   var BLANK = T.solve({ a: 6, b: 5, c: 7 }).solutions[0].v;
-  var MIN_ASPECT = 0.18; // flatter triangles get stretched vertically
+  var MIN_ANGLE = 15; // smaller angles are drawn opened up to this
 
-  // Drawn to scale from the solution (longest side as the base); very flat
-  // triangles are stretched and flagged. A generic outline until solved.
+  // Drawn to scale from the solution, longest side as the base. Triangles with
+  // a tiny angle are drawn as a schematic from adjusted angles (right angles
+  // stay square) and flagged. A generic outline until solved.
   function drawDiagram(svg, sol, picked) {
     var W = 320, H = 190, pad = 30;
     var v = sol ? sol.v : BLANK;
-    var s = [v.a, v.b, v.c], g = [v.A, v.B, v.C];
+    var g = T.diagramAngles([v.A, v.B, v.C], MIN_ANGLE);
+    var schematic = g.some(function (x, i) { return x !== [v.A, v.B, v.C][i]; });
+    // Law of sines: side lengths in proportion to the sines of the drawn angles.
+    var s = schematic ? g.map(function (x) { return Math.sin(x * Math.PI / 180); }) : [v.a, v.b, v.c];
     var L = s.indexOf(Math.max.apply(null, s));
     var j = (L + 1) % 3, k = (L + 2) % 3;
     var rad = g[j] * Math.PI / 180;
@@ -237,10 +241,9 @@
     P[T.ANGLES[L]] = [s[k] * Math.cos(rad), s[k] * Math.sin(rad)];
 
     var w = s[L], h = P[T.ANGLES[L]][1];
-    var stretch = h < MIN_ASPECT * w ? MIN_ASPECT * w / h : 1;
-    var sc = Math.min((W - 2 * pad) / w, (H - 2 * pad) / (h * stretch));
-    var offX = (W - w * sc) / 2, offY = (H - h * stretch * sc) / 2;
-    function map(p) { return [offX + p[0] * sc, H - offY - p[1] * stretch * sc]; }
+    var sc = Math.min((W - 2 * pad) / w, (H - 2 * pad) / h);
+    var offX = (W - w * sc) / 2, offY = (H - h * sc) / 2;
+    function map(p) { return [offX + p[0] * sc, H - offY - p[1] * sc]; }
     var Q = { A: map(P.A), B: map(P.B), C: map(P.C) };
     var cx = (Q.A[0] + Q.B[0] + Q.C[0]) / 3, cy = (Q.A[1] + Q.B[1] + Q.C[1]) / 3;
 
@@ -255,7 +258,7 @@
       points: [Q.A, Q.B, Q.C].map(function (p) { return p.join(','); }).join(' ')
     }));
 
-    // Right-angle squares, built along the drawn edges so they survive stretching.
+    // Right-angle squares, built along the drawn edges.
     T.ANGLES.forEach(function (gName, i) {
       if (Math.abs(g[i] - 90) > 1e-6) return;
       var o = [(i + 1) % 3, (i + 2) % 3].map(function (n) {
@@ -273,7 +276,7 @@
       }));
     });
 
-    if (sol && stretch > 1) {
+    if (sol && schematic) {
       svg.appendChild(svgEl('text', { 'class': 'dg-note', x: W - 8, y: 14 }, 'not to scale'));
     }
 

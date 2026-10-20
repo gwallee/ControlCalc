@@ -221,6 +221,27 @@
     return result;
   }
 
+  // Angles for drawing a schematic: none below min, right angles kept at 90,
+  // obtuse stays obtuse. Degrees taken first from acute angles, then obtuse.
+  // Returns the input unchanged when every angle is already >= min.
+  function diagramAngles(g, min) {
+    if (Math.min.apply(null, g) >= min) return g.slice();
+    var d = g.map(function (x) { return Math.max(x, min); });
+    var deficit = d[0] + d[1] + d[2] - 180;
+    var right = g.map(function (x) { return Math.abs(x - 90) < 1e-6; });
+    [function (x) { return x < 90; }, function (x) { return x > 90; }].forEach(function (pool) {
+      var idx = [0, 1, 2].filter(function (i) { return g[i] > min && !right[i] && pool(g[i]); });
+      // Obtuse angles only give down to just above 90; acute down to min.
+      var floor = function (i) { return g[i] > 90 ? 90 + 1 : min; };
+      var room = idx.reduce(function (sum, i) { return sum + d[i] - floor(i); }, 0);
+      if (deficit <= 0 || room <= 0) return;
+      var take = Math.min(deficit, room);
+      idx.forEach(function (i) { d[i] -= take * (d[i] - floor(i)) / room; });
+      deficit -= take;
+    });
+    return d;
+  }
+
   var api = {
     SIDES: SIDES,
     ANGLES: ANGLES,
@@ -230,7 +251,8 @@
     fmtField: fmtField,
     parseNum: parseNum,
     pickInputs: pickInputs,
-    solve: solve
+    solve: solve,
+    diagramAngles: diagramAngles
   };
 
   if (typeof module === 'object' && module.exports) module.exports = api;

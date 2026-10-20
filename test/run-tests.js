@@ -121,6 +121,36 @@ test('work shows formula, substitution, result', function () {
   assert.strictEqual(area.sub, 'Area = ½·4·5·sin 36.87°');
 });
 
+// --- diagram angles ---
+
+function sum3(d) { return d[0] + d[1] + d[2]; }
+
+test('diagramAngles leaves normal triangles alone', function () {
+  assert.deepStrictEqual(T.diagramAngles([60, 50, 70], 15), [60, 50, 70]);
+});
+
+test('diagramAngles keeps a right angle square', function () {
+  var d = T.diagramAngles([89.648, 0.352, 90], 15);
+  near(d[2], 90); near(d[1], 15); near(d[0], 75); near(sum3(d), 180);
+});
+
+test('diagramAngles keeps obtuse obtuse', function () {
+  var d = T.diagramAngles([91, 88.9, 0.1], 15);
+  assert.ok(d[0] > 90, 'obtuse became ' + d[0]);
+  near(d[2], 15); near(sum3(d), 180);
+  d = T.diagramAngles([175, 2, 3], 15);
+  near(d[0], 150); near(d[1], 15); near(d[2], 15);
+});
+
+test('diagramAngles: no angle below min on random slivers', function () {
+  for (var n = 0; n < 500; n++) {
+    var a = Math.random() * 15, b = Math.random() * (180 - a);
+    var d = T.diagramAngles([a, b, 180 - a - b], 15);
+    near(sum3(d), 180, 1e-9);
+    d.forEach(function (x) { assert.ok(x >= 15 - 1e-9, 'angle ' + x); });
+  }
+});
+
 // --- round trip: every determinate 3-field combo recovers the triangle ---
 
 test('round trip on random triangles', function () {
