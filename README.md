@@ -46,10 +46,12 @@ are from the V's vertex:
 | | |
 |---|---|
 | θ | included angle of the V |
-| r, D | part radius, diameter |
+| D | part diameter (r = D / 2 is solved, no box) |
 | d | vertex → part center, along the center line: `r / sin(θ/2)` |
 | t | vertex → contact point, along a face: `r / tan(θ/2)` |
 | g | vertex → part bottom: `d − r` |
 | h | vertex → part top: `d + r` |
 | w | contact span, under More: `2·t·sin(θ/2)` |
 | e | contact height above the vertex, under More: `t·cos(θ/2)` |
+
+w and e are letters on the drawing only; their values are under More.

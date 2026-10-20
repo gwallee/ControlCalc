@@ -1,8 +1,9 @@
 /* Round part in a V nest — screen. Math lives in vee-math.js.
  * Fixed drawing (a 90° V) with the boxes on it: θ under the vertex, D over
- * the part, r in it, t outside the contact on the left face, and g / d / h
- * in a column on the right, each level with the height it measures from
- * the vertex. */
+ * the part, t outside the contact on the left face, and g / d / h in a
+ * column on the right, each level with the height it measures from the
+ * vertex. Radius has no box (r is still solved and shown in the work);
+ * e and w are just letters on the drawing, their values under More. */
 (function (root) {
   'use strict';
 
@@ -13,12 +14,15 @@
     th: 'included angle θ', r: 'radius r', D: 'diameter D', d: 'vertex to center d',
     t: 'vertex to contact t', g: 'vertex to part bottom g', h: 'vertex to part top h'
   };
-  var EXTRAS = [{ key: 'w', label: 'Contact span w' }, { key: 'e', label: 'Contact height e' }];
+  var EXTRAS = [{ key: 'w', label: 'w  contact span' }, { key: 'e', label: 'e  contact height' }];
+  var BOXES = M.FIELDS.filter(function (f) { return f !== 'r'; });
 
   function load() {
     var s = K.load(STORE_KEY);
     var ok = Array.isArray(s.order) && s.text;
-    return { order: ok ? s.order : [], text: ok ? s.text : {}, extras: !!s.extras };
+    // Drop anything without a box (r typed in build 6), so no hidden inputs.
+    var order = ok ? s.order.filter(function (f) { return BOXES.indexOf(f) >= 0; }) : [];
+    return { order: order, text: ok ? s.text : {}, extras: !!s.extras };
   }
 
   function mount(container) {
@@ -34,11 +38,14 @@
     var extrasEl = root.querySelector('.calc-extras');
     var extrasBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
+    var legend = root.querySelector('.vee-legend');
+    legend.appendChild(el('div', null, 'From vertex: g bottom · e contacts · d center · h top'));
+    legend.appendChild(el('div', null, 't along face · w contact span'));
     var current = { sol: null, picked: [] };
 
     function save() { K.save(STORE_KEY, st); }
 
-    M.FIELDS.forEach(function (f) {
+    BOXES.forEach(function (f) {
       fields[f] = K.field(stage, {
         name: M.SYM[f],
         label: LABELS[f],
@@ -111,7 +118,7 @@
         statusEl.textContent = 'From ' + picked.map(function (f) { return M.SYM[f]; }).join(', ');
       }
 
-      M.FIELDS.forEach(function (f) {
+      BOXES.forEach(function (f) {
         var hasText = st.text[f] != null && st.text[f] !== '';
         K.paint(fields[f], {
           typed: picked.indexOf(f) >= 0,
@@ -154,7 +161,7 @@
     var cx = ladderX / 2 + 2, vy = H - hh * 2 - 14; // vertex, centered left of the box column
     var rp = W * 0.2, s45 = Math.SQRT1_2;     // drawn radius; drawn V is 90°
     var cy = vy - rp * Math.SQRT2;            // part center
-    var levels = { g: cy + rp, d: cy, h: cy - rp };
+    var levels = { g: cy + rp, e: vy - rp * s45, d: cy, h: cy - rp };
     var contact = [cx - rp * s45, vy - rp * s45]; // left face
     var reach = Math.min(cx - W * 0.03, vy - H * 0.04); // V legs
     var hl = function (f) { return picked.indexOf(f) >= 0 ? ' is-in' : ''; };
@@ -162,12 +169,13 @@
     svg.textContent = '';
     svg.appendChild(svgEl('line', { 'class': 'dg-axis', x1: cx, y1: vy, x2: cx, y2: levels.h - 14 }));
     // Level guides from the center line out to the dimension line.
-    ['g', 'd', 'h'].forEach(function (f) {
-      svg.appendChild(svgEl('line', { 'class': 'dg-guide' + hl(f), x1: cx, y1: levels[f], x2: ladderX + 6, y2: levels[f] }));
+    ['g', 'e', 'd', 'h'].forEach(function (f) {
+      var x1 = f === 'e' ? 2 * cx - contact[0] : cx; // e starts at the right contact
+      svg.appendChild(svgEl('line', { 'class': 'dg-guide' + hl(f), x1: x1, y1: levels[f], x2: ladderX + 6, y2: levels[f] }));
     });
     svg.appendChild(svgEl('line', { 'class': 'dg-guide', x1: cx, y1: vy, x2: ladderX + 6, y2: vy }));
     svg.appendChild(svgEl('line', { 'class': 'dg-dim', x1: ladderX, y1: vy, x2: ladderX, y2: levels.h }));
-    [vy, levels.g, levels.d, levels.h].forEach(function (y) {
+    [vy, levels.g, levels.e, levels.d, levels.h].forEach(function (y) {
       svg.appendChild(svgEl('line', { 'class': 'dg-dim', x1: ladderX - 4, y1: y, x2: ladderX + 4, y2: y }));
     });
 
@@ -186,12 +194,16 @@
     svg.appendChild(svgEl('path', {
       'class': 'dg-dim', d: 'M' + (cx - 6) + ' ' + cy + 'h12M' + cx + ' ' + (cy - 6) + 'v12'
     }));
+    // w: contact to contact; e: its level on the dimension line. Letters only.
+    var wx2 = 2 * cx - contact[0];
+    svg.appendChild(svgEl('line', { 'class': 'dg-wdim', x1: contact[0], y1: contact[1], x2: wx2, y2: contact[1] }));
+    svg.appendChild(svgEl('text', { 'class': 'dg-label', x: cx, y: contact[1] - 8 }, 'w'));
+    svg.appendChild(svgEl('text', { 'class': 'dg-label', x: ladderX - 10, y: levels.e - 6 }, 'e'));
 
     var right = W - bw / 2;
     K.placeBoxes(fields, [
       { f: 'th', x: cx, y: vy + hh + 8 },
       { f: 'D', x: cx, y: levels.h - hh - 8 },
-      { f: 'r', x: cx, y: cy - rp * 0.45 },
       { f: 't', x: contact[0] - 32, y: contact[1] + 32 }, // outside the left face
       { f: 'g', x: right, y: levels.g },
       { f: 'd', x: right, y: levels.d },
