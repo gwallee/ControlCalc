@@ -25,8 +25,11 @@ as a PWA (offline via `sw.js`).
 
 ## Triangle solver
 
-Type any values into a, b, c (sides) and A, B, C (angles, degrees; side a
-is opposite angle A). Amber solid = typed, blue dashed = solved. Tap ƒx on
-a solved value for formula → your numbers → result. Typing into a solved
-field makes it an input; the oldest typed value drops out. A third angle
-is skipped as an input (it adds nothing without a side).
+Type values straight into the boxes on the triangle: a, b, c (sides) and
+A, B, C (angles, degrees; side a is opposite angle A). Amber solid =
+typed, blue dashed = solved. Typing into a solved box makes it an input;
+the oldest typed value drops out. A third angle is skipped as an input (it
+adds nothing without a side). The drawing is a regular triangle, or a right
+triangle when one angle is exactly 90°, never to scale. It only reshapes
+once you're done typing. ƒx Work jumps to formula → your numbers → result
+for each solved value; Area · P shows area and perimeter.

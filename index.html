@@ -24,21 +24,20 @@
 
   <template id="tpl-triangle">
     <section class="tri">
-      <svg class="tri-diagram" viewBox="0 0 320 190" aria-label="Triangle diagram"></svg>
+      <div class="tri-stage">
+        <svg class="tri-diagram" aria-label="Triangle diagram"></svg>
+      </div>
 
       <div class="tri-status" aria-live="polite"></div>
       <div class="tri-pick" hidden></div>
 
-      <div class="tri-grid">
-        <div class="col-head">Sides</div>
-        <div class="col-head">Angles °</div>
-      </div>
-
-      <div class="tri-extras"></div>
-
       <div class="tri-actions">
+        <button type="button" class="btn tri-work-btn">ƒx Work</button>
+        <button type="button" class="btn tri-extras-btn" aria-expanded="false">Area · P</button>
         <button type="button" class="btn tri-clear">Clear</button>
       </div>
+
+      <div class="tri-extras" hidden></div>
 
       <h2 class="work-head">Work</h2>
       <div class="tri-work"></div>
