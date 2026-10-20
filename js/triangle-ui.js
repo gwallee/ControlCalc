@@ -6,11 +6,10 @@
 (function (root) {
   'use strict';
 
-  var T = root.TriangleMath;
+  var T = root.TriangleMath, K = root.UIKit;
+  var el = K.el, svgEl = K.svgEl, pts = K.pts;
   var STORE_KEY = 'robotcalc.triangle';
   var EXTRAS = [{ key: 'area', label: 'Area' }, { key: 'perimeter', label: 'Perimeter' }];
-  var SVG_NS = 'http://www.w3.org/2000/svg';
-  var BOX_H = 44;
   var EDGES = [['a', 'B', 'C'], ['b', 'A', 'C'], ['c', 'A', 'B']]; // side x is opposite vertex X
 
   // Vertices as fractions of the stage. Right: A bottom-left, C (90°)
@@ -32,30 +31,19 @@
 
   function load() {
     var st = { mode: 'right', extras: false, right: blank(), any: blank() };
-    try {
-      var s = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
-      if (Array.isArray(s.order)) s = { any: s, extras: s.extras, mode: 'any' }; // build ≤ 4
-      if (MODES[s.mode]) st.mode = s.mode;
-      st.extras = !!s.extras;
-      ['right', 'any'].forEach(function (m) {
-        if (s[m] && Array.isArray(s[m].order) && s[m].text) {
-          st[m] = { order: s[m].order, text: s[m].text, pick: s[m].pick || 0 };
-        }
-      });
-    } catch (e) { /* no storage */ }
+    var s = K.load(STORE_KEY);
+    if (Array.isArray(s.order)) s = { any: s, extras: s.extras, mode: 'any' }; // build ≤ 4
+    if (MODES[s.mode]) st.mode = s.mode;
+    st.extras = !!s.extras;
+    ['right', 'any'].forEach(function (m) {
+      if (s[m] && Array.isArray(s[m].order) && s[m].text) {
+        st[m] = { order: s[m].order, text: s[m].text, pick: s[m].pick || 0 };
+      }
+    });
     return st;
   }
 
-  function save(st) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(st)); } catch (e) { /* no storage */ }
-  }
-
-  function el(tag, cls, text) {
-    var n = document.createElement(tag);
-    if (cls) n.className = cls;
-    if (text != null) n.textContent = text;
-    return n;
-  }
+  function save(st) { K.save(STORE_KEY, st); }
 
   function mount(container) {
     var root = document.getElementById('tpl-triangle').content.firstElementChild.cloneNode(true);
@@ -63,15 +51,15 @@
 
     var st = load();
     var openWork = {};
-    var inputs = {}, boxes = {}, extraVals = {}, modeBtns = {};
-    var stage = root.querySelector('.tri-stage');
-    var statusEl = root.querySelector('.tri-status');
-    var pickEl = root.querySelector('.tri-pick');
-    var workEl = root.querySelector('.tri-work');
-    var extrasEl = root.querySelector('.tri-extras');
-    var extrasBtn = root.querySelector('.tri-extras-btn');
-    var modesEl = root.querySelector('.tri-modes');
-    var svg = root.querySelector('.tri-diagram');
+    var fields = {}, extraVals = {}, modeBtns = {};
+    var stage = root.querySelector('.calc-stage');
+    var statusEl = root.querySelector('.calc-status');
+    var pickEl = root.querySelector('.calc-pick');
+    var workEl = root.querySelector('.calc-work');
+    var extrasEl = root.querySelector('.calc-extras');
+    var extrasBtn = root.querySelector('.calc-extras-btn');
+    var modesEl = root.querySelector('.calc-modes');
+    var svg = root.querySelector('.calc-diagram');
     var current = { sol: null, picked: [] };
 
     function cur() { return st[st.mode]; }
@@ -92,37 +80,15 @@
       modeBtns[m] = b;
     });
 
-    function field(f) {
-      var box = el('label', 'fld' + (T.isAngle(f) ? ' is-angle' : ''));
-      box.appendChild(el('span', 'fld-name', f));
-      var input = el('input', 'fld-input');
-      input.type = 'text';
-      input.inputMode = 'decimal';
-      input.autocomplete = 'off';
-      input.spellcheck = false;
-      input.setAttribute('aria-label', (T.isAngle(f) ? 'angle ' : 'side ') + f);
-      box.appendChild(input);
-      if (T.isAngle(f)) box.appendChild(el('span', 'fld-unit', '°'));
-
-      input.addEventListener('focus', function () {
-        // Typing into a solved field starts fresh; the solved value stays visible as a hint.
-        if (input.classList.contains('is-out')) {
-          input.placeholder = input.value;
-          input.value = '';
-        }
+    T.FIELDS.forEach(function (f) {
+      fields[f] = K.field(stage, {
+        name: f,
+        label: (T.isAngle(f) ? 'angle ' : 'side ') + f,
+        angle: T.isAngle(f),
+        onInput: function (text) { onType(f, text); },
+        onDone: function () { render(); }
       });
-      input.addEventListener('input', function () { onType(f, input.value); });
-      input.addEventListener('blur', function () { setTimeout(render, 0); });
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') input.blur();
-      });
-
-      inputs[f] = input;
-      boxes[f] = box;
-      stage.appendChild(box);
-    }
-
-    T.FIELDS.forEach(field);
+    });
 
     EXTRAS.forEach(function (x) {
       var row = el('div', 'extra');
@@ -139,20 +105,24 @@
       render();
     });
 
-    root.querySelector('.tri-work-btn').addEventListener('click', function () {
+    root.querySelector('.calc-work-btn').addEventListener('click', function () {
       Object.keys(current.sol ? current.sol.work : {}).forEach(function (k) { openWork[k] = true; });
       render();
       root.querySelector('.work-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
 
-    root.querySelector('.tri-clear').addEventListener('click', function () {
+    root.querySelector('.calc-clear').addEventListener('click', function () {
       st[st.mode] = blank();
       openWork = {};
       save(st);
       render();
     });
 
-    window.addEventListener('resize', function () { layout(); });
+    function onResize() {
+      if (!root.isConnected) window.removeEventListener('resize', onResize);
+      else layout();
+    }
+    window.addEventListener('resize', onResize);
 
     function onType(f, text) {
       var s = cur();
@@ -189,7 +159,7 @@
       });
 
       // Status line
-      statusEl.className = 'tri-status' + (res.error ? (res.incomplete ? ' is-need' : ' is-err') : ' is-ok');
+      statusEl.className = 'calc-status' + (res.error ? (res.incomplete ? ' is-need' : ' is-err') : ' is-ok');
       if (res.error) {
         statusEl.textContent = typedPicked.length === 0 ? m.hint : res.error;
       } else {
@@ -216,21 +186,17 @@
 
       // Boxes
       T.FIELDS.forEach(function (f) {
-        var input = inputs[f];
         var hidden = pinned.indexOf(f) >= 0;
-        boxes[f].hidden = hidden;
+        fields[f].box.hidden = hidden;
         if (hidden) return;
-        var isIn = picked.indexOf(f) >= 0;
         var hasText = s.text[f] != null && s.text[f] !== '';
-        var bad = hasText && !isFinite(T.parseNum(s.text[f]));
-        var solved = !isIn && !bad && sol && sol.work[f];
-        input.className = 'fld-input' + (isIn || bad ? ' is-in' : ' is-out') +
-          (bad || (isIn && res.error && !res.incomplete) ? ' is-bad' : '');
-        boxes[f].className = 'fld' + (T.isAngle(f) ? ' is-angle' : '') + (isIn || bad ? ' is-in' : ' is-out');
-        if (document.activeElement === input) return;
-        input.placeholder = '';
-        if (isIn || bad) input.value = s.text[f];
-        else input.value = solved ? T.fmt(sol.v[f]) : '';
+        K.paint(fields[f], {
+          typed: picked.indexOf(f) >= 0,
+          text: s.text[f],
+          bad: hasText && !isFinite(T.parseNum(s.text[f])),
+          err: res.error && !res.incomplete,
+          solved: sol && sol.work[f] ? T.fmt(sol.v[f]) : null
+        });
       });
 
       extrasEl.hidden = !st.extras;
@@ -240,49 +206,19 @@
         extraVals[x.key].textContent = sol ? T.fmt(sol.v[x.key]) : '—';
       });
 
-      renderWork(sol, picked);
+      K.renderWork(workEl, sol, T.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; })
+        .concat(EXTRAS.map(function (x) { return x.key; })), openWork);
       layout();
     }
 
     function layout() {
-      drawStage(stage, svg, boxes, mode(), !!current.sol, current.picked);
-    }
-
-    function renderWork(sol, picked) {
-      workEl.textContent = '';
-      if (!sol) {
-        workEl.appendChild(el('p', 'work-empty', 'Solved values show their formulas here.'));
-        return;
-      }
-      var keys = T.FIELDS.filter(function (f) { return picked.indexOf(f) < 0 && sol.work[f]; })
-        .concat(EXTRAS.map(function (x) { return x.key; }));
-      keys.forEach(function (k) {
-        var w = sol.work[k];
-        var d = el('details', 'work-item');
-        d.dataset.key = k;
-        d.open = !!openWork[k];
-        d.appendChild(el('summary', 'work-result', w.result));
-        d.appendChild(el('div', 'work-formula', w.formula));
-        d.appendChild(el('div', 'work-sub', w.sub));
-        d.appendChild(el('div', 'work-final', w.result));
-        d.addEventListener('toggle', function () { openWork[k] = d.open; });
-        workEl.appendChild(d);
-      });
+      drawStage(stage, svg, fields, mode(), !!current.sol, current.picked);
     }
 
     render();
   }
 
   // --- drawing -------------------------------------------------------------
-
-  function svgEl(tag, attrs, text) {
-    var n = document.createElementNS(SVG_NS, tag);
-    Object.keys(attrs).forEach(function (k) { n.setAttribute(k, attrs[k]); });
-    if (text != null) n.textContent = text;
-    return n;
-  }
-
-  function pts(list) { return list.map(function (p) { return p.join(','); }).join(' '); }
 
   function svgIcon(m) {
     var s = svgEl('svg', { viewBox: '0 0 24 20', 'class': 'mode-icon', 'aria-hidden': 'true' });
@@ -293,44 +229,14 @@
     return s;
   }
 
-  // Push overlapping boxes apart, then keep them inside the stage.
-  function separate(list, W, H, gap) {
-    for (var it = 0; it < 40; it++) {
-      var moved = false;
-      for (var i = 0; i < list.length; i++) {
-        for (var j = i + 1; j < list.length; j++) {
-          var p = list[i], q = list[j];
-          var dx = q.x - p.x, dy = q.y - p.y;
-          var ox = p.hw + q.hw + gap - Math.abs(dx), oy = p.hh + q.hh + gap - Math.abs(dy);
-          if (ox <= 0 || oy <= 0) continue;
-          moved = true;
-          if (ox < oy) {
-            var sx = (dx >= 0 ? 1 : -1) * ox / 2;
-            p.x -= sx; q.x += sx;
-          } else {
-            var sy = (dy >= 0 ? 1 : -1) * oy / 2;
-            p.y -= sy; q.y += sy;
-          }
-        }
-      }
-      list.forEach(function (b) {
-        b.x = Math.max(b.hw, Math.min(W - b.hw, b.x));
-        b.y = Math.max(b.hh, Math.min(H - b.hh, b.y));
-      });
-      if (!moved) break;
-    }
-  }
-
   // Fixed drawing for the mode: angle boxes part way from each corner toward
   // the middle, side boxes on the middle of each edge.
-  function drawStage(stage, svg, boxes, m, solved, picked) {
+  function drawStage(stage, svg, fields, m, solved, picked) {
     var W = stage.clientWidth || 320;
     var H = Math.round(W * m.aspect);
     stage.style.height = H + 'px';
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
 
-    var bw = Math.min(120, Math.floor(W * 0.33));
-    var hw = bw / 2, hh = BOX_H / 2;
     var Q = {};
     T.ANGLES.forEach(function (g) { Q[g] = [m.V[g][0] * W, m.V[g][1] * H]; });
     var cx = (Q.A[0] + Q.B[0] + Q.C[0]) / 3, cy = (Q.A[1] + Q.B[1] + Q.C[1]) / 3;
@@ -369,18 +275,7 @@
       var p1 = Q[e[1]], p2 = Q[e[2]];
       list.push({ f: e[0], x: (p1[0] + p2[0]) / 2, y: (p1[1] + p2[1]) / 2 });
     });
-    list.forEach(function (b) { b.hw = hw; b.hh = hh; });
-    separate(list, W, H, 6);
-
-    var font = bw < 96 ? '14px' : bw < 108 ? '15px' : '';
-    list.forEach(function (b) {
-      var s = boxes[b.f].style;
-      s.width = bw + 'px';
-      s.height = BOX_H + 'px';
-      s.fontSize = font;
-      s.left = (b.x - hw) + 'px';
-      s.top = (b.y - hh) + 'px';
-    });
+    K.placeBoxes(fields, list, W, H);
   }
 
   root.TriangleUI = { mount: mount };

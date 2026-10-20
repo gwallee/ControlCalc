@@ -161,5 +161,59 @@ test('round trip on random triangles', function () {
   }
 });
 
+// ===== V nest =====
+var V = require('../js/vee-math.js');
+
+test('vee: 90° V, r = 10', function () {
+  var v = V.solve({ th: 90, r: 10 }).solutions[0].v;
+  near(v.d, 10 * Math.SQRT2); near(v.t, 10); near(v.g, 10 * Math.SQRT2 - 10);
+  near(v.h, 10 * Math.SQRT2 + 10); near(v.D, 20); near(v.w, 10 * Math.SQRT2); near(v.e, 10 / Math.SQRT2);
+});
+
+test('vee: D and θ show work', function () {
+  var w = V.solve({ th: 90, D: 20 }).solutions[0].work;
+  assert.strictEqual(w.r.sub, 'r = 20 / 2');
+  assert.strictEqual(w.d.formula, 'd = r / sin(θ/2)');
+  assert.strictEqual(w.d.sub, 'd = 10 / sin(90°/2)');
+  assert.strictEqual(w.d.result, 'd = 14.142');
+});
+
+test('vee: pickInputs treats r and D as one', function () {
+  assert.deepStrictEqual(V.pickInputs(['D', 'r', 'th']), ['D', 'th']);
+  assert.deepStrictEqual(V.pickInputs(['h', 'th', 'r']), ['h', 'th']);
+});
+
+test('vee: impossible pairs', function () {
+  assert.ok(/d > r/.test(V.solve({ r: 10, d: 8 }).error));
+  assert.ok(/h > 2·r/.test(V.solve({ r: 10, h: 15 }).error));
+  assert.ok(/t < d/.test(V.solve({ d: 5, t: 6 }).error));
+  assert.ok(/t > g/.test(V.solve({ t: 2, g: 3 }).error));
+  assert.ok(V.solve({ th: 180, r: 1 }).error);
+  assert.ok(V.solve({ r: 1 }).incomplete);
+});
+
+test('vee: round trip over every input pair', function () {
+  var seed = 999;
+  function rand() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  var F = V.FIELDS, pairs = [];
+  for (var i = 0; i < F.length; i++) for (var j = i + 1; j < F.length; j++) {
+    if (!(F[i] === 'r' && F[j] === 'D')) pairs.push([F[i], F[j]]);
+  }
+  assert.strictEqual(pairs.length, 20);
+  for (var n = 0; n < 200; n++) {
+    var th = 10 + rand() * 160, r = 0.5 + rand() * 300;
+    var truth = V.solve({ th: th, r: r }).solutions[0].v;
+    pairs.forEach(function (p) {
+      var given = {};
+      p.forEach(function (f) { given[f] = truth[f]; });
+      var res = V.solve(given);
+      assert.ok(!res.error, p.join(',') + ' error ' + res.error + ' ' + JSON.stringify(given));
+      F.concat(V.EXTRAS).forEach(function (f) {
+        near(res.solutions[0].v[f], truth[f], 1e-6, p.join(',') + ' → ' + f);
+      });
+    });
+  }
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

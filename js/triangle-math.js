@@ -7,8 +7,9 @@
   var SIDES = ['a', 'b', 'c'];
   var ANGLES = ['A', 'B', 'C'];
   var FIELDS = SIDES.concat(ANGLES);
-  var DECIMALS = 3;
   var RAD = Math.PI / 180;
+  var core = typeof module === 'object' && module.exports ? require('./core.js') : root.CalcCore;
+  var fmt = core.fmt, parseNum = core.parseNum;
 
   function clamp1(x) { return Math.max(-1, Math.min(1, x)); }
   function sin(d) { return Math.sin(d * RAD); }
@@ -19,21 +20,7 @@
   function isAngle(f) { return ANGLES.indexOf(f) >= 0; }
   function others(i) { return [0, 1, 2].filter(function (n) { return n !== i; }); }
 
-  function fmt(n) {
-    if (!isFinite(n)) return '—';
-    var s = n.toFixed(DECIMALS);
-    if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
-    return s === '-0' ? '0' : s;
-  }
-
   function fmtField(f, n) { return isAngle(f) ? fmt(n) + '°' : fmt(n); }
-
-  // Accepts "12", "12.5", ".5", "12,5". Anything else is NaN.
-  function parseNum(text) {
-    var s = String(text == null ? '' : text).trim().replace(',', '.');
-    if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(s)) return NaN;
-    return parseFloat(s);
-  }
 
   // order: typed fields, most recent first. Returns the fields to solve from:
   // the 3 most recent, skipping a 3rd angle (it adds nothing without a side).

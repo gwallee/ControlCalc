@@ -9,8 +9,8 @@ web app (PWA) — open it on a phone, add to home screen.
   clearing. The 3 most recently entered values are the inputs, the rest
   are solved. Shows each formula with your numbers substituted. Handles
   the ambiguous SSA case (shows both solutions).
-- **Circle in a V** — center-to-vertex, vertex-to-contact, center height
-  from included angle and radius.
+- **Circle in V** — round part in a V nest: enter any 2 of included angle,
+  radius/diameter, and the distances from the vertex; the rest are solved.
 - **Stack index** — row / column / layer (and X/Y/Z offset from pitch)
   from a part count. Row- or column-first, 0/1-based, serpentine.
 
@@ -37,3 +37,19 @@ solid = typed, blue dashed = solved. Typing into a solved box makes it an
 input; the oldest typed value drops out. Each mode keeps its own values.
 ƒx Work jumps to formula → your numbers → result for each solved value;
 Area · P shows area and perimeter.
+
+## Circle in V
+
+For picking a round part out of a V nest. Enter any 2 values; all distances
+are from the V's vertex:
+
+| | |
+|---|---|
+| θ | included angle of the V |
+| r, D | part radius, diameter |
+| d | vertex → part center, along the center line: `r / sin(θ/2)` |
+| t | vertex → contact point, along a face: `r / tan(θ/2)` |
+| g | vertex → part bottom: `d − r` |
+| h | vertex → part top: `d + r` |
+| w | contact span, under More: `2·t·sin(θ/2)` |
+| e | contact height above the vertex, under More: `t·cos(θ/2)` |
