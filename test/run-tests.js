@@ -499,5 +499,35 @@ test('vee gripper: round trip over every pair', function () {
   }
 });
 
+// ===== Scaling =====
+var SC = require('../js/scale-math.js');
+
+test('scale: Brian\'s three examples', function () {
+  var a = SC.solve({ InMin: 4, InMax: 20, OutMin: 0, OutMax: 500, In: 4.789 }, 'In').solutions[0].v;
+  near(a.Out, 24.65625); assert.strictEqual(a.INT, 25);
+  var b = SC.solve({ InMin: 3, InMax: 60, OutMin: 0, OutMax: 1800, In: 20 }, 'In').solutions[0].v;
+  near(b.Out, 536.8421053); assert.strictEqual(b.INT, 537);
+  var c = SC.solve({ InMin: 3, InMax: 60, OutMin: 0, OutMax: 1800, In: 30 }, 'In').solutions[0].v;
+  near(c.Out, 852.6315789); assert.strictEqual(c.INT, 853);
+});
+
+test('scale: work, reverse, gain / offset', function () {
+  var r = SC.solve({ InMin: 4, InMax: 20, OutMin: 0, OutMax: 500, In: 4.789 }, 'In').solutions[0];
+  assert.strictEqual(r.work.Out.sub, 'Out = (4.789 − 4) / (20 − 4) · (500 − 0) + 0');
+  near(r.v.m, 31.25); near(r.v.b, -125);
+  var back = SC.solve({ InMin: 4, InMax: 20, OutMin: 0, OutMax: 500, Out: 250 }, 'Out').solutions[0].v;
+  near(back.In, 12);
+  assert.ok(SC.solve({ InMin: 4, InMax: 20, OutMin: 0, OutMax: 500, In: 25 }, 'In').outside);
+});
+
+test('scale: INT rounds like Logix (ties to even)', function () {
+  assert.deepStrictEqual([2.5, 3.5, -2.5, -3.5, 2.4, 2.6].map(SC.toInt), [2, 4, -2, -4, 2, 3]);
+});
+
+test('scale: bad ranges', function () {
+  assert.ok(/differ/.test(SC.solve({ InMin: 4, InMax: 4, OutMin: 0, OutMax: 5, In: 1 }, 'In').error));
+  assert.ok(SC.solve({ InMin: 4, InMax: 20, OutMin: 0, In: 1 }, 'In').incomplete);
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

@@ -18,6 +18,8 @@ web app (PWA) — open it on a phone, add to home screen.
   line length and angle; N evenly spaced points along the line.
 - **Screw** — ball screw thrust from motor torque, gear ratio, lead and
   efficiency, or any of those from the others.
+- **Scale** — linear scaling of a value from an input range to an output
+  range (e.g. 4–20 mA → 0–500), and back.
 
 ## Run
 
@@ -136,3 +138,14 @@ efficiency):
 **Units** picks each one. Changing a unit converts the value already in
 that box, so it still means the same amount; mixed units fold into a
 single factor on p in the formula.
+
+## Scale
+
+Linear scaling, as in a PLC CPT:
+
+    Out = (In − InMin) / (InMax − InMin) · (OutMax − OutMin) + OutMin
+
+Enter the input and output ranges, then In (or Out, to work back to the
+In that gives it). Also shows the INT a Logix MOV REAL → INT stores
+(nearest, ties to even) and the line as gain / offset, `Out = m·In + b`.
+Keep the result tag a REAL in the PLC and move it to an INT after.

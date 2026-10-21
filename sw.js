@@ -20,6 +20,8 @@ var FILES = [
   'js/line-ui.js',
   'js/screw-math.js',
   'js/screw-ui.js',
+  'js/scale-math.js',
+  'js/scale-ui.js',
   'js/app.js',
   'manifest.webmanifest',
   'icon.svg',

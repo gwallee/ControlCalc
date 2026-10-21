@@ -8,7 +8,8 @@
     { id: 'vee', label: 'Circle in V', mount: function (el) { VeeUI.mount(el); } },
     { id: 'stack', label: 'Stack', mount: function (el) { StackUI.mount(el); } },
     { id: 'line', label: 'Line', mount: function (el) { LineUI.mount(el); } },
-    { id: 'screw', label: 'Screw', mount: function (el) { ScrewUI.mount(el); } }
+    { id: 'screw', label: 'Screw', mount: function (el) { ScrewUI.mount(el); } },
+    { id: 'scale', label: 'Scale', mount: function (el) { ScaleUI.mount(el); } }
   ];
 
   document.getElementById('build').textContent = ROBOTCALC_BUILD;
