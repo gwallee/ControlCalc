@@ -120,11 +120,42 @@
     });
   }
 
+  // The screen's ƒx Work button: lit while every formula is open.
+  function workBtn(workEl) {
+    var section = workEl.closest('section');
+    return section && section.querySelector('.calc-work-btn');
+  }
+
+  function syncWorkBtn(workEl) {
+    var btn = workBtn(workEl);
+    if (!btn) return;
+    var items = workEl.querySelectorAll('.work-item');
+    var all = items.length > 0 && Array.prototype.every.call(items, function (d) { return d.open; });
+    btn.classList.toggle('is-on', all);
+    btn.setAttribute('aria-pressed', all);
+  }
+
+  // Wire ƒx Work to show all formulas (and scroll to them), or hide them
+  // all and scroll back up when they're already showing. getOpen returns
+  // the screen's current open-state map (screens replace it on Clear).
+  function workToggle(section, getOpen, render) {
+    section.querySelector('.calc-work-btn').addEventListener('click', function () {
+      var items = section.querySelectorAll('.work-item');
+      var show = !Array.prototype.every.call(items, function (d) { return d.open; }) || !items.length;
+      var openWork = getOpen();
+      Array.prototype.forEach.call(items, function (d) { openWork[d.dataset.key] = show; });
+      render();
+      if (show && items.length) section.querySelector('.work-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' }); // back to the calc
+    });
+  }
+
   // Collapsible formula → numbers → result for each key in keys.
   function renderWork(workEl, sol, keys, openWork) {
     workEl.textContent = '';
     if (!sol) {
       workEl.appendChild(el('p', 'work-empty', 'Solved values show their formulas here.'));
+      syncWorkBtn(workEl);
       return;
     }
     keys.forEach(function (k) {
@@ -137,14 +168,15 @@
       d.appendChild(el('div', 'work-formula', w.formula));
       d.appendChild(el('div', 'work-sub', w.sub));
       d.appendChild(el('div', 'work-final', w.result));
-      d.addEventListener('toggle', function () { openWork[k] = d.open; });
+      d.addEventListener('toggle', function () { openWork[k] = d.open; syncWorkBtn(workEl); });
       workEl.appendChild(d);
     });
+    syncWorkBtn(workEl);
   }
 
   root.UIKit = {
     el: el, svgEl: svgEl, pts: pts, load: load, save: save,
     field: field, paint: paint, separate: separate, boxWidth: boxWidth, BOX_H: BOX_H,
-    placeBoxes: placeBoxes, renderWork: renderWork
+    placeBoxes: placeBoxes, renderWork: renderWork, workToggle: workToggle
   };
 })(this);

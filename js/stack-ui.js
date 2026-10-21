@@ -84,11 +84,7 @@
       root.querySelector(key === 'first' ? '.stack-opts2' : '.stack-opts').appendChild(group);
     });
 
-    root.querySelector('.calc-work-btn').addEventListener('click', function () {
-      Object.keys(current.sol ? current.sol.work : {}).forEach(function (k) { openWork[k] = true; });
-      render();
-      root.querySelector('.work-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    K.workToggle(root, function () { return openWork; }, function () { render(); });
 
     xyzBtn.addEventListener('click', function () {
       st.xyz = !st.xyz;

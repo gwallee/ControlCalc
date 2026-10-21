@@ -105,11 +105,7 @@
       render();
     });
 
-    root.querySelector('.calc-work-btn').addEventListener('click', function () {
-      Object.keys(current.sol ? current.sol.work : {}).forEach(function (k) { openWork[k] = true; });
-      render();
-      root.querySelector('.work-head').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    K.workToggle(root, function () { return openWork; }, function () { render(); });
 
     root.querySelector('.calc-clear').addEventListener('click', function () {
       st[st.mode] = blank();
