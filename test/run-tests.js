@@ -412,11 +412,22 @@ test('screw: torque → thrust, 2:1, 10 mm lead, 90%', function () {
   assert.strictEqual(r.target, 'F');
   var v = r.solutions[0].v;
   near(v.F, 2 * Math.PI * 0.9 * 2 * 2 / 0.01); // 2261.9 N
-  near(v.Fkgf, v.F / 9.80665); near(v.Flbf, v.F / 4.4482216152605);
   var w = r.solutions[0].work.F;
   assert.strictEqual(w.formula, 'F = 2π·(η/100)·i·T / (p/1000)');
   assert.strictEqual(w.sub, 'F = 2π·(90/100)·2·2 / (10/1000)');
   assert.strictEqual(w.result, 'F = 2261.947 N');
+});
+
+test('screw: imperial, lbf·in / in / lbf, agrees with metric', function () {
+  var r = BS.solve({ T: 10, i: 2, p: 0.2, eta: 90 }, 'imperial');
+  var F = r.solutions[0].v.F;
+  near(F, 2 * Math.PI * 0.9 * 2 * 10 / 0.2); // 565.487 lbf
+  assert.strictEqual(r.solutions[0].work.F.formula, 'F = 2π·(η/100)·i·T / p');
+  assert.strictEqual(r.solutions[0].work.F.result, 'F = 565.487 lbf');
+  // Same setup in metric: 10 lbf·in = 1.12985 N·m, 0.2 in = 5.08 mm.
+  var m = BS.solve({ T: 10 * 0.1129848290276167, i: 2, p: 5.08, eta: 90 }).solutions[0].v.F;
+  near(m / 4.4482216152605, F, 1e-9);
+  near(BS.solve({ F: F, i: 2, p: 0.2, eta: 90 }, 'imperial').solutions[0].v.T, 10);
 });
 
 test('screw: thrust → required torque', function () {

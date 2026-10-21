@@ -119,16 +119,17 @@ lists each one's x / y:
 
 ## Screw
 
-Ball screw thrust. Enter any 4 of the 5; the last one solves (torque →
-thrust, or the torque a push force needs, or the lead, ratio or
-efficiency):
+Ball screw thrust. Pick Metric or Imperial; each keeps its own values.
+Enter any 4 of the 5 and the last one solves (torque → thrust, or the
+torque a push force needs, or the lead, ratio or efficiency):
 
-    F = 2π·(η/100)·i·T / (p/1000)
+    metric:   F = 2π·(η/100)·i·T / (p/1000)
+    imperial: F = 2π·(η/100)·i·T / p
 
-| | |
-|---|---|
-| T | motor torque, N·m |
-| i | gear ratio, motor turns per screw turn (2 = 2:1 reduction) |
-| p | screw lead, mm per screw turn |
-| η | efficiency, % |
-| F | thrust, N (kgf / lbf, and T in lbf·in, under Units) |
+| | metric | imperial |
+|---|---|---|
+| T motor torque | N·m | lbf·in |
+| i gear ratio, motor turns per screw turn (2 = 2:1) | — | — |
+| p screw lead, per screw turn | mm | in |
+| η efficiency | % | % |
+| F thrust | N | lbf |

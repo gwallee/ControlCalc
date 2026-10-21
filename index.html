@@ -136,6 +136,8 @@
 
   <template id="tpl-screw">
     <section class="screw">
+      <div class="calc-modes" role="group" aria-label="Units"></div>
+
       <div class="calc-stage">
         <svg class="calc-diagram" aria-label="Motor, gears and ball screw"></svg>
       </div>
@@ -145,11 +147,8 @@
 
       <div class="calc-actions">
         <button type="button" class="btn calc-work-btn">ƒx Work</button>
-        <button type="button" class="btn calc-extras-btn" aria-expanded="false">Units</button>
         <button type="button" class="btn calc-clear">Clear</button>
       </div>
-
-      <div class="calc-extras" hidden></div>
 
       <h2 class="work-head">Work</h2>
       <div class="calc-work"></div>

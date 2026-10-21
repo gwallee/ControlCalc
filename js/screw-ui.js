@@ -1,4 +1,6 @@
-/* Ball screw screen. Math lives in screw-math.js.
+/* Ball screw screen. Math lives in screw-math.js. Metric / Imperial switch
+ * at the top; each system keeps its own values and shows its units in the
+ * boxes (T N·m or lbf·in, p mm or in, F N or lbf).
  * Fixed drawing: motor → gear pair → screw → nut pushing. T over the motor,
  * i over the gears, F over the push arrow; p under the threads, η beside it. */
 (function (root) {
@@ -8,17 +10,23 @@
   var el = K.el, svgEl = K.svgEl;
   var STORE_KEY = 'robotcalc.screw';
   var LABELS = {
-    T: 'motor torque T N·m', i: 'gear ratio i motor turns per screw turn', p: 'screw lead p mm',
-    eta: 'efficiency η %', F: 'thrust F N'
+    T: 'motor torque T', i: 'gear ratio i motor turns per screw turn', p: 'screw lead p',
+    eta: 'efficiency η %', F: 'thrust F'
   };
-  var EXTRAS = [
-    { key: 'Fkgf', label: 'F  kgf' }, { key: 'Flbf', label: 'F  lbf' }, { key: 'Tlbin', label: 'T  lbf·in' }
-  ];
+  var SYSTEMS = { metric: 'Metric', imperial: 'Imperial' };
+
+  function values(s) {
+    var ok = s && Array.isArray(s.order) && s.text;
+    return { order: ok ? s.order : [], text: ok ? s.text : {} };
+  }
 
   function load() {
     var s = K.load(STORE_KEY);
-    var ok = Array.isArray(s.order) && s.text;
-    return { order: ok ? s.order : [], text: ok ? s.text : {}, extras: !!s.extras };
+    if (Array.isArray(s.order)) s = { metric: s }; // build ≤ 19 was metric only
+    return {
+      system: SYSTEMS[s.system] ? s.system : 'metric',
+      metric: values(s.metric), imperial: values(s.imperial)
+    };
   }
 
   function mount(container) {
@@ -27,18 +35,30 @@
 
     var st = load();
     var openWork = {};
-    var fields = {}, extraVals = {};
+    var fields = {}, sysBtns = {};
     var stage = root.querySelector('.calc-stage');
     var statusEl = root.querySelector('.calc-status');
     var workEl = root.querySelector('.calc-work');
-    var extrasEl = root.querySelector('.calc-extras');
-    var extrasBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
     var legend = root.querySelector('.calc-legend');
-    legend.appendChild(el('div', null, 'i = motor turns per screw turn (2 = 2:1) · p = lead per screw turn'));
+    legend.appendChild(el('div', null, 'i motor turns per screw turn (2 = 2:1) · p lead/turn'));
     var current = { sol: null, picked: [] };
 
     function save() { K.save(STORE_KEY, st); }
+    function cur() { return st[st.system]; }
+
+    Object.keys(SYSTEMS).forEach(function (k) {
+      var b = el('button', 'seg sys-' + k, SYSTEMS[k]);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        st.system = k;
+        openWork = {};
+        save();
+        render();
+      });
+      root.querySelector('.calc-modes').appendChild(b);
+      sysBtns[k] = b;
+    });
 
     M.FIELDS.forEach(function (f) {
       fields[f] = K.field(stage, {
@@ -51,26 +71,10 @@
       });
     });
 
-    EXTRAS.forEach(function (x) {
-      var row = el('div', 'extra');
-      row.appendChild(el('span', 'extra-name', x.label));
-      var val = el('span', 'extra-val', '—');
-      row.appendChild(val);
-      extrasEl.appendChild(row);
-      extraVals[x.key] = val;
-    });
-
-    extrasBtn.addEventListener('click', function () {
-      st.extras = !st.extras;
-      save();
-      render();
-    });
-
     K.workToggle(root, function () { return openWork; }, function () { render(); });
 
     root.querySelector('.calc-clear').addEventListener('click', function () {
-      st.order = [];
-      st.text = {};
+      st[st.system] = { order: [], text: {} };
       openWork = {};
       save();
       render();
@@ -83,23 +87,25 @@
     window.addEventListener('resize', onResize);
 
     function onType(f, text) {
-      st.order = st.order.filter(function (k) { return k !== f; });
+      var s = cur();
+      s.order = s.order.filter(function (k) { return k !== f; });
       if (String(text).trim() === '') {
-        delete st.text[f];
+        delete s.text[f];
       } else {
-        st.text[f] = text;
-        st.order.unshift(f);
+        s.text[f] = text;
+        s.order.unshift(f);
       }
       save();
       render();
     }
 
     function render() {
-      var valid = st.order.filter(function (f) { return isFinite(M.parseNum(st.text[f])); });
+      var s = cur(), units = M.UNITS[st.system];
+      var valid = s.order.filter(function (f) { return isFinite(M.parseNum(s.text[f])); });
       var picked = M.pickInputs(valid);
       var given = {};
-      picked.forEach(function (f) { given[f] = M.parseNum(st.text[f]); });
-      var res = M.solve(given);
+      picked.forEach(function (f) { given[f] = M.parseNum(s.text[f]); });
+      var res = M.solve(given, st.system);
       var sol = res.solutions ? res.solutions[0] : null;
       current = { sol: sol, picked: picked };
 
@@ -111,26 +117,29 @@
           ' → ' + M.SYM[res.target];
       }
 
+      Object.keys(sysBtns).forEach(function (k) {
+        sysBtns[k].classList.toggle('is-on', k === st.system);
+        sysBtns[k].setAttribute('aria-pressed', k === st.system);
+      });
+
       M.FIELDS.forEach(function (f) {
-        var hasText = st.text[f] != null && st.text[f] !== '';
+        var sub = fields[f].box.querySelector('.fld-sub');
+        if (sub) {
+          sub.textContent = units[f];
+          fields[f].box.classList.toggle('is-short-sub', units[f].length < 2);
+          fields[f].input.setAttribute('aria-label', LABELS[f] + ' ' + units[f]);
+        }
+        var hasText = s.text[f] != null && s.text[f] !== '';
         K.paint(fields[f], {
           typed: picked.indexOf(f) >= 0,
-          text: st.text[f],
-          bad: hasText && !isFinite(M.parseNum(st.text[f])),
+          text: s.text[f],
+          bad: hasText && !isFinite(M.parseNum(s.text[f])),
           err: res.error && !res.incomplete,
           solved: sol && sol.work[f] ? M.fmt(sol.v[f]) : null
         });
       });
 
-      extrasEl.hidden = !st.extras;
-      extrasBtn.setAttribute('aria-expanded', st.extras);
-      extrasBtn.classList.toggle('is-on', st.extras);
-      EXTRAS.forEach(function (x) {
-        extraVals[x.key].textContent = sol ? M.fmt(sol.v[x.key]) : '—';
-      });
-
-      K.renderWork(workEl, sol, M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; })
-        .concat(M.EXTRAS), openWork);
+      K.renderWork(workEl, sol, M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; }), openWork);
       layout();
     }
 
