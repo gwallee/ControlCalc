@@ -1,8 +1,9 @@
-# Robot Calc
+# Control Calc
 
-Phone-first geometry calculator PWA for FANUC/robot integrators. Built by
-Brian Jalufka (DAC Robotics) with Claude. Users know the math — keep UI
-text terse, big touch targets (gloves), formulas over prose.
+Phone-first calculator PWA for controls engineers and FANUC/robot
+integrators. Built by Brian Jalufka (DAC Robotics) with Claude. Users know
+the math — keep UI text terse, big touch targets (gloves), formulas over
+prose.
 
 ## Hard rules
 

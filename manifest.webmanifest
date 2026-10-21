@@ -1,6 +1,6 @@
 {
-  "name": "Robot Calc",
-  "short_name": "Robot Calc",
+  "name": "Control Calc",
+  "short_name": "Control Calc",
   "description": "Shop-floor geometry calculator for robot integrators",
   "start_url": "./",
   "scope": "./",

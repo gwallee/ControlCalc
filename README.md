@@ -1,7 +1,8 @@
-# Robot Calc
+# Control Calc
 
-Shop-floor geometry calculator for robot integrators. Installable, offline
-web app (PWA) — open it on a phone, add to home screen.
+Shop-floor calculator for controls engineers and robot integrators.
+Installable, offline web app (PWA) — open it on a phone, add to home
+screen.
 
 ## Calcs
 
