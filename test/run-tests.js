@@ -315,6 +315,11 @@ test('line: corners → L, W, D, θ, center', function () {
   var v = LN.solve({ x1: 10, y1: 20, x2: 40, y2: 60 }).solutions[0].v;
   near(v.L, 30); near(v.W, 40); near(v.D, 50); near(v.th, Math.atan2(40, 30) * 180 / Math.PI);
   near(v.cx, 25); near(v.cy, 40); near(v.area, 1200);
+  assert.deepStrictEqual(v.P3, [40, 20]);
+  assert.deepStrictEqual(v.P4, [10, 60]);
+  var w = LN.solve({ x1: 10, y1: 20, x2: 40, y2: 60 }).solutions[0].work.P3;
+  assert.strictEqual(w.formula, 'P3 = (x2, y1)');
+  assert.strictEqual(w.sub, 'P3 = (40, 20)');
 });
 
 test('line: angle in every quadrant', function () {

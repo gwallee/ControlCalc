@@ -46,7 +46,7 @@
     if (opts.angle) box.appendChild(el('span', 'fld-unit', '°'));
 
     input.addEventListener('focus', function () {
-      if (input.classList.contains('is-out')) {
+      if (input.classList.contains('is-out') && !input.readOnly) { // read-only boxes keep their value
         input.placeholder = input.value;
         input.value = '';
       }
@@ -164,7 +164,11 @@
       var d = el('details', 'work-item');
       d.dataset.key = k;
       d.open = !!openWork[k];
-      d.appendChild(el('summary', 'work-result', w.result));
+      // Result, with the formula's right-hand side beside it.
+      var sum = el('summary', 'work-result');
+      sum.appendChild(el('span', 'work-value', w.result));
+      sum.appendChild(el('span', 'work-rule', w.formula.slice(w.formula.indexOf('=') + 1).trim()));
+      d.appendChild(sum);
       d.appendChild(el('div', 'work-formula', w.formula));
       d.appendChild(el('div', 'work-sub', w.sub));
       d.appendChild(el('div', 'work-final', w.result));

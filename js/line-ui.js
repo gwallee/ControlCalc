@@ -1,7 +1,8 @@
 /* Line / rectangle screen. Math lives in line-math.js.
  * Fixed drawing: a rectangle with P1 bottom-left and P2 top-right, the line
- * being its diagonal. x1 / y1 under P1, x2 / y2 over P2, L along the bottom
- * edge, W up the right edge, D on the diagonal, θ in the arc at P1.
+ * being its diagonal. x1 / y1 under P1, x2 / y2 over P2, L centered on the
+ * bottom edge, W on the right edge, D on the diagonal, θ in the arc at P1.
+ * The other corners, P3 (bottom-right) and P4 (top-left), show as x, y.
  * Points (behind a button) spaces N points from P1 to P2 and lists them. */
 (function (root) {
   'use strict';
@@ -77,6 +78,19 @@
       row.appendChild(val);
       extrasEl.appendChild(row);
       extraVals[x.key] = val;
+    });
+
+    // The other corners: solved only, one box each, "x," over "y".
+    var pairs = {};
+    M.CORNERS.forEach(function (c) {
+      var box = el('div', 'fld is-out is-pair');
+      box.setAttribute('aria-label', 'corner ' + c);
+      box.appendChild(el('span', 'fld-name', c));
+      var val = el('div', 'pair-val');
+      box.appendChild(val);
+      stage.appendChild(box);
+      fields[c] = { box: box };
+      pairs[c] = val;
     });
 
     extrasBtn.addEventListener('click', function () {
@@ -162,6 +176,12 @@
       EXTRAS.forEach(function (x) {
         extraVals[x.key].textContent = sol ? M.fmt(sol.v[x.key]) : '—';
       });
+      M.CORNERS.forEach(function (c) {
+        pairs[c].textContent = '';
+        if (!sol) return;
+        pairs[c].appendChild(el('span', null, M.fmt(sol.v[c][0]) + ','));
+        pairs[c].appendChild(el('span', null, M.fmt(sol.v[c][1])));
+      });
 
       // Points along the line.
       ptsEl.hidden = !st.pts;
@@ -193,7 +213,7 @@
         ptsStep.textContent = sol ? 'Enter N, the number of points (ends included)' : 'Solve the line first';
       }
 
-      var keys = M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; }).concat(M.EXTRAS);
+      var keys = M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; }).concat(M.CORNERS, M.EXTRAS);
       var shown = sol;
       if (pr) {
         shown = { v: sol.v, work: Object.assign({}, sol.work, pr.work) };
@@ -219,7 +239,10 @@
     svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
 
     var bw = K.boxWidth(W), hw = bw / 2, hh = K.BOX_H / 2;
-    var p1 = [W * 0.1, H - hh * 2 - 16], p2 = [W * 0.9, hh * 2 + 16];
+    // Box rows above and below the rectangle; L sits on the bottom edge, so
+    // the bottom row clears it.
+    var rowTop = hh + 4, rowBot = H - hh - 4;
+    var p1 = [W * 0.08, rowBot - hh * 3 - 6], p2 = [W - hw - 4, rowTop + hh + 10];
     var mid = [(p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2];
     var ang = Math.atan2(p1[1] - p2[1], p2[0] - p1[0]); // screen angle of the diagonal
     var hl = function (f) { return picked.indexOf(f) >= 0 ? ' is-in' : ''; };
@@ -243,22 +266,24 @@
       d: 'M' + (p1[0] + ar) + ' ' + p1[1] + 'A' + ar + ' ' + ar + ' 0 0 0 ' +
         (p1[0] + ar * Math.cos(ang)) + ' ' + (p1[1] - ar * Math.sin(ang))
     }));
-    [p1, p2].forEach(function (p, i) {
-      svg.appendChild(svgEl('circle', { 'class': 'dg-dot', cx: p[0], cy: p[1], r: 4.5 }));
-      svg.appendChild(svgEl('text', {
-        'class': 'dg-label', x: p[0] + (i ? -22 : -4), y: p[1] + (i ? 2 : -14)
-      }, i ? 'P2' : 'P1'));
-    });
+    [[p1, 'P1', 10, -12], [p2, 'P2', -20, 18], [[p2[0], p1[1]], 'P3', -20, -12], [[p1[0], p2[1]], 'P4', 14, 18]]
+      .forEach(function (c) {
+        svg.appendChild(svgEl('circle', { 'class': 'dg-dot', cx: c[0][0], cy: c[0][1], r: 4.5 }));
+        svg.appendChild(svgEl('text', { 'class': 'dg-label', x: c[0][0] + c[2], y: c[0][1] + c[3] }, c[1]));
+      });
 
     var nrm = [-Math.sin(ang), -Math.cos(ang)]; // screen normal, up-left of the line
+    var c1 = hw + 2, c2 = W / 2, c3 = W - hw - 2; // three box slots across
     K.placeBoxes(fields, [
-      { f: 'x1', x: hw + 2, y: p1[1] + hh + 10 },
-      { f: 'y1', x: hw * 3 + 10, y: p1[1] + hh + 10 },
-      { f: 'x2', x: W - hw * 3 - 10, y: p2[1] - hh - 10 },
-      { f: 'y2', x: W - hw - 2, y: p2[1] - hh - 10 },
-      { f: 'th', x: p1[0] + ar + hw - 6, y: p1[1] - hh - 8 },
-      { f: 'L', x: p2[0] - hw - 8, y: p1[1] - hh - 8 },
-      { f: 'W', x: p2[0] - hw - 8, y: mid[1] + 10 },
+      { f: 'P4', x: c1, y: rowTop },
+      { f: 'x2', x: c2, y: rowTop },
+      { f: 'y2', x: c3, y: rowTop },
+      { f: 'x1', x: c1, y: rowBot },
+      { f: 'y1', x: c2, y: rowBot },
+      { f: 'P3', x: c3, y: rowBot },
+      { f: 'L', x: mid[0], y: p1[1] },            // on the bottom edge
+      { f: 'W', x: p2[0], y: mid[1] + 24 },        // on the right edge
+      { f: 'th', x: p1[0] + ar + hw - 6, y: p1[1] - hh * 2 - 10 },
       { f: 'D', x: mid[0] + nrm[0] * 46, y: mid[1] + nrm[1] * 46 }
     ], W, H);
   }

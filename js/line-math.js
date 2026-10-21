@@ -5,6 +5,7 @@
  *   D = √(L² + W²)             (line length, rectangle diagonal)
  *   θ = atan2(W, L)            (line angle, CCW from +X, −180°…180°)
  *   cx, cy = midpoint, area = |L·W|   (solved only)
+ *   P3 = (x2, y1), P4 = (x1, y2)      (the other two corners, solved only)
  * points(): N points evenly spaced from P1 to P2, both ends included.
  * Unknowns are x1, y1, L, W, so any 4 independent values solve it. Works as
  * a plain browser script (window.LineMath) and under node. */
@@ -17,6 +18,7 @@
 
   var FIELDS = ['x1', 'y1', 'x2', 'y2', 'L', 'W', 'D', 'th'];
   var EXTRAS = ['cx', 'cy', 'area'];
+  var CORNERS = ['P3', 'P4'];
   var SYM = { x1: 'x1', y1: 'y1', x2: 'x2', y2: 'y2', L: 'L', W: 'W', D: 'D', th: 'θ', cx: 'cx', cy: 'cy', area: 'area' };
   var XG = ['x1', 'x2', 'L'], YG = ['y1', 'y2', 'W'], PG = ['D', 'th'];
 
@@ -90,6 +92,12 @@
     put(sol, 'cx', (v.x1 + v.x2) / 2, 'cx = (x1 + x2) / 2');
     put(sol, 'cy', (v.y1 + v.y2) / 2, 'cy = (y1 + y2) / 2');
     put(sol, 'area', Math.abs(v.L * v.W), 'area = |L·W|');
+    // The other two corners, as x, y pairs.
+    [['P3', 'x2', 'y1'], ['P4', 'x1', 'y2']].forEach(function (c) {
+      var xy = '(' + fmt(v[c[1]]) + ', ' + fmt(v[c[2]]) + ')';
+      v[c[0]] = [v[c[1]], v[c[2]]];
+      sol.work[c[0]] = { formula: c[0] + ' = (' + c[1] + ', ' + c[2] + ')', sub: c[0] + ' = ' + xy, result: c[0] + ' = ' + xy };
+    });
     return sol;
   }
 
@@ -172,7 +180,7 @@
   }
 
   var api = {
-    FIELDS: FIELDS, EXTRAS: EXTRAS, SYM: SYM,
+    FIELDS: FIELDS, EXTRAS: EXTRAS, CORNERS: CORNERS, SYM: SYM,
     isAngle: isAngle, fmt: fmt, fmtField: fmtField, parseNum: core.parseNum,
     pickInputs: pickInputs, solve: solve, points: points
   };

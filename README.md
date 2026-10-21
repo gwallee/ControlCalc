@@ -93,6 +93,7 @@ for example both points, or P1 plus a length and angle.
 | L, W | rectangle length / width, signed: `x2 − x1`, `y2 − y1` |
 | D | line length / diagonal: `√(L² + W²)` |
 | θ | line angle, CCW from +X, −180°…180°: `atan2(W, L)` |
+| P3, P4 | the other corners, as x, y: `(x2, y1)`, `(x1, y2)` |
 | cx, cy, area | center and area, under More |
 
 D with L (or W) has two answers, the other side pointing either way; a
