@@ -40,6 +40,20 @@
 
   // Service workers need http(s); file:// just runs without offline caching.
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
-    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(function () {});
+    // A new build takes over as soon as it has downloaded (sw.js calls
+    // skipWaiting); reload once onto it so a single visit shows the update.
+    // Skipped on the very first install, when there was no old build.
+    var hadBuild = !!navigator.serviceWorker.controller, reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (!hadBuild || reloaded) return;
+      reloaded = true;
+      location.reload();
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (reg) {
+      // Check for a new build whenever the app comes back to the screen.
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') reg.update().catch(function () {});
+      });
+    }).catch(function () {});
   }
 })();

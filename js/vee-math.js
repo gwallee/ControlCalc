@@ -6,6 +6,7 @@
  *   t     vertex → contact (face)   t = r / tan(θ/2)
  *   g     vertex → part bottom      g = d − r
  *   h     vertex → part top         h = d + r
+ *   S     vertex → vertex, two V jaws gripping the part: S = 2·d
  *   w     contact span (output)     w = 2·t·sin(θ/2)
  *   e     contact height (output)   e = t·cos(θ/2)
  * Two values fix everything (θ and r). Works as a plain browser script
@@ -17,9 +18,9 @@
   var fmt = core.fmt;
   var RAD = Math.PI / 180;
 
-  var FIELDS = ['th', 'r', 'D', 'd', 't', 'g', 'h']; // typable
+  var FIELDS = ['th', 'r', 'D', 'd', 't', 'g', 'h', 'S']; // typable
   var EXTRAS = ['w', 'e'];                           // solved only
-  var SYM = { th: 'θ', r: 'r', D: 'D', d: 'd', t: 't', g: 'g', h: 'h', w: 'w', e: 'e' };
+  var SYM = { th: 'θ', r: 'r', D: 'D', d: 'd', t: 't', g: 'g', h: 'h', S: 'S', w: 'w', e: 'e' };
   var LENGTHS = ['d', 't', 'g', 'h'];
 
   function sin(x) { return Math.sin(x * RAD); }
@@ -32,19 +33,21 @@
   function fmtField(f, n) { return isAngle(f) ? fmt(n) + '°' : fmt(n); }
 
   // order: typed fields, most recent first. The 2 most recent, skipping r if
-  // D is already picked (and vice versa) — they're the same unknown.
+  // D is already picked (and vice versa) — they're the same unknown; so are
+  // d and S.
   function pickInputs(order) {
     var picked = [];
     for (var i = 0; i < order.length && picked.length < 2; i++) {
       var f = order[i];
       if (FIELDS.indexOf(f) < 0 || picked.indexOf(f) >= 0) continue;
       if ((f === 'r' && picked.indexOf('D') >= 0) || (f === 'D' && picked.indexOf('r') >= 0)) continue;
+      if ((f === 'd' && picked.indexOf('S') >= 0) || (f === 'S' && picked.indexOf('d') >= 0)) continue;
       picked.push(f);
     }
     return picked;
   }
 
-  var KEY = { 'θ': 'th', r: 'r', D: 'D', d: 'd', t: 't', g: 'g', h: 'h', w: 'w', e: 'e' };
+  var KEY = { 'θ': 'th', r: 'r', D: 'D', d: 'd', t: 't', g: 'g', h: 'h', S: 'S', w: 'w', e: 'e' };
 
   // Record a solved value and its work; the substituted line swaps each
   // symbol on the right of '=' for its current value.
@@ -52,7 +55,7 @@
     sol.v[f] = value;
     var eq = formula.indexOf('=');
     var lhs = formula.slice(0, eq).trim();
-    var rhs = formula.slice(eq + 1).replace(/θ|\b[rDdtghwe]\b/g, function (s) {
+    var rhs = formula.slice(eq + 1).replace(/θ|\b[rDdtghweS]\b/g, function (s) {
       return fmtField(KEY[s], sol.v[KEY[s]]);
     });
     sol.work[f] = { formula: formula, sub: lhs + ' =' + rhs, result: lhs + ' = ' + fmtField(f, value) };
@@ -105,7 +108,8 @@
     var v = sol.v;
 
     if (names.indexOf('D') >= 0) put(sol, 'r', v.D / 2, 'r = D / 2');
-    var lens = LENGTHS.filter(function (k) { return names.indexOf(k) >= 0; });
+    if (names.indexOf('S') >= 0) put(sol, 'd', v.S / 2, 'd = S / 2');
+    var lens = LENGTHS.filter(function (k) { return names.indexOf(k) >= 0 || (k === 'd' && 'S' in given); });
 
     var rule;
     if (names.indexOf('th') < 0) {
@@ -124,6 +128,7 @@
     if (!('t' in v)) put(sol, 't', v.r / tan(v.th / 2), 't = r / tan(θ/2)');
     if (!('g' in v)) put(sol, 'g', v.d - v.r, 'g = d − r');
     if (!('h' in v)) put(sol, 'h', v.d + v.r, 'h = d + r');
+    if (!('S' in v)) put(sol, 'S', 2 * v.d, 'S = 2·d');
     put(sol, 'w', 2 * v.t * sin(v.th / 2), 'w = 2·t·sin(θ/2)');
     put(sol, 'e', v.t * Math.cos(v.th / 2 * RAD), 'e = t·cos(θ/2)');
     return { solutions: [sol] };

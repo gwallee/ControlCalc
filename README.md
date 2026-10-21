@@ -9,8 +9,9 @@ web app (PWA) — open it on a phone, add to home screen.
   clearing. The 3 most recently entered values are the inputs, the rest
   are solved. Shows each formula with your numbers substituted. Handles
   the ambiguous SSA case (shows both solutions).
-- **Circle in V** — round part in a V nest: enter any 2 of included angle,
-  radius/diameter, and the distances from the vertex; the rest are solved.
+- **Circle in V** — round part in a V nest, or a rod held between two V
+  gripper jaws: enter any 2 of included angle, diameter, and the distances
+  from the vertex (or vertex to vertex); the rest are solved.
 - **Stack** — part # ↔ col / row / layer for placing parts in a grid, with
   optional layers, serpentine, and XYZ offsets from a pitch.
 - **Line** — two points (line ends or rectangle corners) ↔ length / width,
@@ -21,7 +22,8 @@ web app (PWA) — open it on a phone, add to home screen.
 ## Run
 
 Open `index.html` directly, or serve the folder over HTTPS to install it
-as a PWA (offline via `sw.js`).
+as a PWA (offline via `sw.js`). An installed copy picks up a new build on
+its own: once it has downloaded, the page reloads onto it.
 
 ## Test
 
@@ -59,6 +61,11 @@ are from the V's vertex:
 | e | contact height above the vertex, under More: `t·cos(θ/2)` |
 
 w and e are letters on the drawing only; their values are under More.
+
+**V gripper** — a rod held between two facing V jaws. S is the distance
+between the jaws' vertices: `S = 2·d`, so `r = (S/2)·sin(θ/2)`. Enter S
+and θ to get the rod diameter, or D and θ to get the S the jaws close to.
+Each mode keeps its own values.
 
 ## Stack
 

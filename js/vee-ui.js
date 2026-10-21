@@ -1,9 +1,14 @@
-/* Round part in a V nest — screen. Math lives in vee-math.js.
- * Fixed drawing (a 90° V) with the boxes on it: θ under the vertex, D over
- * the part, t outside the contact on the left face, and g / d / h in a
- * column on the right, each level with the height it measures from the
- * vertex. Radius has no box (r is still solved and shown in the work);
- * e and w are just letters on the drawing, their values under More. */
+/* Round part in a V — screen. Math lives in vee-math.js. Two modes:
+ *   nest    — a part sitting in one V. Fixed drawing (a 90° V): θ under the
+ *             vertex, D over the part, t outside the contact on the left
+ *             face, and g / d / h in a column on the right, each level with
+ *             the height it measures from the vertex. e and w are letters
+ *             on the drawing, their values under More.
+ *   gripper — a rod held between two V jaws: S is vertex to vertex, D sits
+ *             in the part, θ under the bottom vertex, g level with the part
+ *             bottom, t outside the lower-left contact.
+ * Radius has no box (r is still solved and shown in the work). Each mode
+ * keeps its own values. */
 (function (root) {
   'use strict';
 
@@ -12,17 +17,39 @@
   var STORE_KEY = 'robotcalc.vee';
   var LABELS = {
     th: 'included angle θ', r: 'radius r', D: 'diameter D', d: 'vertex to center d',
-    t: 'vertex to contact t', g: 'vertex to part bottom g', h: 'vertex to part top h'
+    t: 'vertex to contact t', g: 'vertex to part bottom g', h: 'vertex to part top h',
+    S: 'vertex to vertex S'
   };
   var EXTRAS = [{ key: 'w', label: 'w  contact span' }, { key: 'e', label: 'e  contact height' }];
-  var BOXES = M.FIELDS.filter(function (f) { return f !== 'r'; });
+  var MODES = {
+    nest: {
+      label: 'V nest', boxes: ['th', 'D', 'd', 't', 'g', 'h'], hint: 'Enter any 2 values',
+      legend: ['From vertex: g bottom · e contacts · d center · h top', 't along face · w contact span']
+    },
+    gripper: {
+      label: 'V gripper', boxes: ['th', 'D', 'S', 't', 'g'], hint: 'Enter any 2 values, e.g. S and θ',
+      legend: ['S vertex to vertex (jaws closed on the part)', 'g vertex to part · t vertex to contact, along face']
+    }
+  };
+  var ALL_BOXES = ['th', 'D', 'd', 't', 'g', 'h', 'S'];
+
+  // Keep only values that have a box in that mode (an r typed in build 6
+  // has none), so nothing hidden stays an input.
+  function clean(m, s) {
+    var ok = s && Array.isArray(s.order) && s.text;
+    return {
+      order: ok ? s.order.filter(function (f) { return MODES[m].boxes.indexOf(f) >= 0; }) : [],
+      text: ok ? s.text : {}
+    };
+  }
 
   function load() {
     var s = K.load(STORE_KEY);
-    var ok = Array.isArray(s.order) && s.text;
-    // Drop anything without a box (r typed in build 6), so no hidden inputs.
-    var order = ok ? s.order.filter(function (f) { return BOXES.indexOf(f) >= 0; }) : [];
-    return { order: order, text: ok ? s.text : {}, extras: !!s.extras };
+    if (Array.isArray(s.order)) s = { nest: s, extras: s.extras }; // build ≤ 15
+    return {
+      mode: MODES[s.mode] ? s.mode : 'nest', extras: !!s.extras,
+      nest: clean('nest', s.nest), gripper: clean('gripper', s.gripper)
+    };
   }
 
   function mount(container) {
@@ -39,13 +66,26 @@
     var extrasBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
     var legend = root.querySelector('.calc-legend');
-    legend.appendChild(el('div', null, 'From vertex: g bottom · e contacts · d center · h top'));
-    legend.appendChild(el('div', null, 't along face · w contact span'));
+    var modesEl = root.querySelector('.calc-modes'), modeBtns = {};
     var current = { sol: null, picked: [] };
 
     function save() { K.save(STORE_KEY, st); }
+    function cur() { return st[st.mode]; }
 
-    BOXES.forEach(function (f) {
+    Object.keys(MODES).forEach(function (m) {
+      var b = el('button', 'seg mode-' + m, MODES[m].label);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        st.mode = m;
+        openWork = {};
+        save();
+        render();
+      });
+      modesEl.appendChild(b);
+      modeBtns[m] = b;
+    });
+
+    ALL_BOXES.forEach(function (f) {
       fields[f] = K.field(stage, {
         name: M.SYM[f],
         label: LABELS[f],
@@ -73,8 +113,7 @@
     K.workToggle(root, function () { return openWork; }, function () { render(); });
 
     root.querySelector('.calc-clear').addEventListener('click', function () {
-      st.order = [];
-      st.text = {};
+      st[st.mode] = { order: [], text: {} };
       openWork = {};
       save();
       render();
@@ -87,39 +126,49 @@
     window.addEventListener('resize', onResize);
 
     function onType(f, text) {
-      st.order = st.order.filter(function (k) { return k !== f; });
+      var s = cur();
+      s.order = s.order.filter(function (k) { return k !== f; });
       if (String(text).trim() === '') {
-        delete st.text[f];
+        delete s.text[f];
       } else {
-        st.text[f] = text;
-        st.order.unshift(f);
+        s.text[f] = text;
+        s.order.unshift(f);
       }
       save();
       render();
     }
 
     function render() {
-      var valid = st.order.filter(function (f) { return isFinite(M.parseNum(st.text[f])); });
+      var s = cur(), m = MODES[st.mode];
+      var valid = s.order.filter(function (f) { return isFinite(M.parseNum(s.text[f])); });
       var picked = M.pickInputs(valid);
       var given = {};
-      picked.forEach(function (f) { given[f] = M.parseNum(st.text[f]); });
+      picked.forEach(function (f) { given[f] = M.parseNum(s.text[f]); });
       var res = M.solve(given);
       var sol = res.solutions ? res.solutions[0] : null;
       current = { sol: sol, picked: picked };
 
       statusEl.className = 'calc-status' + (res.error ? (res.incomplete ? ' is-need' : ' is-err') : ' is-ok');
       if (res.error) {
-        statusEl.textContent = picked.length === 0 ? 'Enter any 2 values' : res.error;
+        statusEl.textContent = picked.length === 0 ? m.hint : res.error;
       } else {
         statusEl.textContent = 'From ' + picked.map(function (f) { return M.SYM[f]; }).join(', ');
       }
 
-      BOXES.forEach(function (f) {
-        var hasText = st.text[f] != null && st.text[f] !== '';
+      Object.keys(modeBtns).forEach(function (k) {
+        modeBtns[k].classList.toggle('is-on', k === st.mode);
+        modeBtns[k].setAttribute('aria-pressed', k === st.mode);
+      });
+      legend.textContent = '';
+      m.legend.forEach(function (line) { legend.appendChild(el('div', null, line)); });
+
+      ALL_BOXES.forEach(function (f) {
+        fields[f].box.hidden = m.boxes.indexOf(f) < 0;
+        var hasText = s.text[f] != null && s.text[f] !== '';
         K.paint(fields[f], {
           typed: picked.indexOf(f) >= 0,
-          text: st.text[f],
-          bad: hasText && !isFinite(M.parseNum(st.text[f])),
+          text: s.text[f],
+          bad: hasText && !isFinite(M.parseNum(s.text[f])),
           err: res.error && !res.incomplete,
           solved: sol && sol.work[f] ? M.fmt(sol.v[f]) : null
         });
@@ -138,7 +187,7 @@
     }
 
     function layout() {
-      drawStage(stage, svg, fields, !!current.sol, current.picked);
+      (st.mode === 'gripper' ? drawGripper : drawStage)(stage, svg, fields, !!current.sol, current.picked);
     }
 
     render();
@@ -194,7 +243,7 @@
     var wx2 = 2 * cx - contact[0];
     svg.appendChild(svgEl('line', { 'class': 'dg-wdim', x1: contact[0], y1: contact[1], x2: wx2, y2: contact[1] }));
     svg.appendChild(svgEl('text', { 'class': 'dg-label', x: cx, y: contact[1] - 8 }, 'w'));
-    svg.appendChild(svgEl('text', { 'class': 'dg-label', x: ladderX - 10, y: levels.e - 6 }, 'e'));
+    svg.appendChild(svgEl('text', { 'class': 'dg-label is-on-line', x: ladderX - 14, y: levels.e }, 'e'));
 
     var right = W - bw / 2;
     K.placeBoxes(fields, [
@@ -204,6 +253,58 @@
       { f: 'g', x: right, y: levels.g },
       { f: 'd', x: right, y: levels.d },
       { f: 'h', x: right, y: levels.h }
+    ], W, H);
+  }
+
+  // Two V jaws closed on a rod, vertices top and bottom (drawn 90°).
+  function drawGripper(stage, svg, fields, solved, picked) {
+    var W = stage.clientWidth || 320;
+    var H = Math.round(W * 0.95);
+    stage.style.height = H + 'px';
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+
+    var bw = K.boxWidth(W), hh = K.BOX_H / 2;
+    var ladderX = W - bw - 10;                       // S dimension, left of the right-hand boxes
+    var cx = ladderX / 2 + 2, vy = H - hh * 2 - 14;  // bottom vertex
+    var dp = Math.min(cx - 10, (vy - 10) / 2);       // drawn center → vertex
+    var cy = vy - dp, ty = vy - 2 * dp;              // part center, top vertex
+    var rp = dp * Math.SQRT1_2, s45 = Math.SQRT1_2;  // drawn radius
+    var leg = dp * 0.92;                             // jaws stop short of meeting
+    var hl = function (f) { return picked.indexOf(f) >= 0 ? ' is-in' : ''; };
+    var blank = solved ? '' : ' is-blank';
+    var contact = [cx - rp * s45, cy + rp * s45];    // lower-left
+
+    svg.textContent = '';
+    svg.appendChild(svgEl('line', { 'class': 'dg-axis', x1: cx, y1: ty - 6, x2: cx, y2: vy + 6 }));
+    [[vy, 1], [ty, -1]].forEach(function (j) {
+      var y = j[0], up = j[1];
+      svg.appendChild(svgEl('polyline', {
+        'class': 'dg-vee' + blank + hl('th'),
+        points: K.pts([[cx - leg, y - up * leg], [cx, y], [cx + leg, y - up * leg]])
+      }));
+    });
+    svg.appendChild(svgEl('line', { 'class': 'dg-seg' + hl('t'), x1: cx, y1: vy, x2: contact[0], y2: contact[1] }));
+    svg.appendChild(svgEl('circle', { 'class': 'dg-part' + blank + (hl('r') || hl('D')), cx: cx, cy: cy, r: rp }));
+    [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(function (q) {
+      svg.appendChild(svgEl('circle', { 'class': 'dg-dot', cx: cx + q[0] * rp * s45, cy: cy + q[1] * rp * s45, r: 3.5 }));
+    });
+    svg.appendChild(svgEl('path', { 'class': 'dg-dim', d: 'M' + (cx - 6) + ' ' + cy + 'h12M' + cx + ' ' + (cy - 6) + 'v12' }));
+    // S: vertex to vertex on the dimension line; g: the part bottom's level.
+    [[ty, 'dg-guide' + hl('S')], [vy, 'dg-guide' + hl('S')], [cy + rp, 'dg-guide' + hl('g')]].forEach(function (g) {
+      svg.appendChild(svgEl('line', { 'class': g[1], x1: cx, y1: g[0], x2: ladderX + 6, y2: g[0] }));
+    });
+    svg.appendChild(svgEl('line', { 'class': 'dg-dim', x1: ladderX, y1: ty, x2: ladderX, y2: vy }));
+    [ty, cy + rp, vy].forEach(function (y) {
+      svg.appendChild(svgEl('line', { 'class': 'dg-dim', x1: ladderX - 4, y1: y, x2: ladderX + 4, y2: y }));
+    });
+
+    var right = W - bw / 2;
+    K.placeBoxes(fields, [
+      { f: 'th', x: cx, y: vy + hh + 8 },
+      { f: 'D', x: cx, y: cy - rp * 0.4 },
+      { f: 'S', x: right, y: (ty + cy) / 2 },
+      { f: 'g', x: right, y: cy + rp },
+      { f: 't', x: contact[0] - 36, y: contact[1] + 30 } // outside the lower-left face
     ], W, H);
   }
 

@@ -183,6 +183,15 @@ test('vee: pickInputs treats r and D as one', function () {
   assert.deepStrictEqual(V.pickInputs(['h', 'th', 'r']), ['h', 'th']);
 });
 
+test('vee: two-jaw gripper, vertex spacing → diameter (Brian\'s sheet)', function () {
+  var r = V.solve({ S: 15, th: 90 });
+  var v = r.solutions[0].v;
+  near(v.d, 7.5); near(v.r, 5.303301); near(v.D, 10.6066017);
+  assert.strictEqual(r.solutions[0].work.d.sub, 'd = 15 / 2');
+  near(V.solve({ D: 10.6066017, th: 90 }).solutions[0].v.S, 15);
+  assert.deepStrictEqual(V.pickInputs(['S', 'd', 'th']), ['S', 'th']);
+});
+
 test('vee: impossible pairs', function () {
   assert.ok(/d > r/.test(V.solve({ r: 10, d: 8 }).error));
   assert.ok(/h > 2·r/.test(V.solve({ r: 10, h: 15 }).error));
@@ -197,9 +206,10 @@ test('vee: round trip over every input pair', function () {
   function rand() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
   var F = V.FIELDS, pairs = [];
   for (var i = 0; i < F.length; i++) for (var j = i + 1; j < F.length; j++) {
-    if (!(F[i] === 'r' && F[j] === 'D')) pairs.push([F[i], F[j]]);
+    var a = F[i], b = F[j];
+    if (!(a === 'r' && b === 'D') && !(a === 'd' && b === 'S')) pairs.push([a, b]);
   }
-  assert.strictEqual(pairs.length, 20);
+  assert.strictEqual(pairs.length, 26);
   for (var n = 0; n < 200; n++) {
     var th = 10 + rand() * 160, r = 0.5 + rand() * 300;
     var truth = V.solve({ th: th, r: r }).solutions[0].v;
