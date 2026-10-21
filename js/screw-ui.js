@@ -1,6 +1,6 @@
-/* Ball screw screen. Math lives in screw-math.js. Metric / Imperial switch
- * at the top; each system keeps its own values and shows its units in the
- * boxes (T N·m or lbf·in, p mm or in, F N or lbf).
+/* Ball screw screen. Math lives in screw-math.js.
+ * Units (behind a button) picks the unit for torque, lead and force; the
+ * boxes show them, and changing one converts the values already typed.
  * Fixed drawing: motor → gear pair → screw → nut pushing. T over the motor,
  * i over the gears, F over the push arrow; p under the threads, η beside it. */
 (function (root) {
@@ -13,20 +13,29 @@
     T: 'motor torque T', i: 'gear ratio i motor turns per screw turn', p: 'screw lead p',
     eta: 'efficiency η %', F: 'thrust F'
   };
-  var SYSTEMS = { metric: 'Metric', imperial: 'Imperial' };
-
-  function values(s) {
-    var ok = s && Array.isArray(s.order) && s.text;
-    return { order: ok ? s.order : [], text: ok ? s.text : {} };
-  }
+  var UNIT_ROWS = [['T', 'Torque'], ['p', 'Lead'], ['F', 'Force']];
+  var IMPERIAL = { T: 'lbf·in', p: 'in', F: 'lbf' };
 
   function load() {
-    var s = K.load(STORE_KEY);
-    if (Array.isArray(s.order)) s = { metric: s }; // build ≤ 19 was metric only
+    var s = K.load(STORE_KEY), units = {};
+    if (s.system) { // build 20: a metric / imperial switch, values kept per system
+      s = { order: (s[s.system] || {}).order, text: (s[s.system] || {}).text, units: s.system === 'imperial' ? IMPERIAL : null };
+    }
+    var ok = Array.isArray(s.order) && s.text;
+    UNIT_ROWS.forEach(function (r) {
+      var f = r[0], u = s.units && s.units[f];
+      units[f] = M.UNITS[f][u] ? u : M.METRIC[f];
+    });
     return {
-      system: SYSTEMS[s.system] ? s.system : 'metric',
-      metric: values(s.metric), imperial: values(s.imperial)
+      order: ok ? s.order : [], text: ok ? s.text : {}, exact: (ok && s.exact) || {},
+      units: units, unitsOpen: !!s.unitsOpen
     };
+  }
+
+  // A converted value shows like any other (3 decimals); the exact value is
+  // kept in st.exact for solving, so converting back and forth doesn't drift.
+  function fmtConverted(n) {
+    return M.fmt(n);
   }
 
   function mount(container) {
@@ -35,46 +44,73 @@
 
     var st = load();
     var openWork = {};
-    var fields = {}, sysBtns = {};
+    var fields = {}, unitBtns = {};
     var stage = root.querySelector('.calc-stage');
     var statusEl = root.querySelector('.calc-status');
     var workEl = root.querySelector('.calc-work');
+    var unitsEl = root.querySelector('.calc-extras');
+    var unitsBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
     var legend = root.querySelector('.calc-legend');
     legend.appendChild(el('div', null, 'i motor turns per screw turn (2 = 2:1) · p lead/turn'));
     var current = { sol: null, picked: [] };
 
     function save() { K.save(STORE_KEY, st); }
-    function cur() { return st[st.system]; }
-
-    Object.keys(SYSTEMS).forEach(function (k) {
-      var b = el('button', 'seg sys-' + k, SYSTEMS[k]);
-      b.type = 'button';
-      b.addEventListener('click', function () {
-        st.system = k;
-        openWork = {};
-        save();
-        render();
-      });
-      root.querySelector('.calc-modes').appendChild(b);
-      sysBtns[k] = b;
-    });
 
     M.FIELDS.forEach(function (f) {
       fields[f] = K.field(stage, {
         name: M.SYM[f],
         label: LABELS[f],
         unit: { eta: '%', i: ':1' }[f],
-        sub: { T: 'N·m', p: 'mm', F: 'N' }[f],
+        sub: st.units[f],
         onInput: function (text) { onType(f, text); },
         onDone: function () { render(); }
       });
     });
 
+    // One row of unit choices per quantity.
+    UNIT_ROWS.forEach(function (r) {
+      var f = r[0], row = el('div', 'unit-row');
+      row.appendChild(el('span', 'unit-name', r[1]));
+      var group = el('div', 'calc-modes');
+      unitBtns[f] = {};
+      Object.keys(M.UNITS[f]).forEach(function (u) {
+        var b = el('button', 'seg', u);
+        b.type = 'button';
+        b.addEventListener('click', function () { setUnit(f, u); });
+        group.appendChild(b);
+        unitBtns[f][u] = b;
+      });
+      row.appendChild(group);
+      unitsEl.appendChild(row);
+    });
+
+    // Change a unit, converting a typed value so it means the same amount.
+    function setUnit(f, u) {
+      var from = st.units[f];
+      if (u === from) return;
+      var n = st.exact[f] != null ? st.exact[f] : M.parseNum(st.text[f]);
+      if (st.text[f] != null && isFinite(n)) {
+        st.exact[f] = M.convert(f, n, from, u);
+        st.text[f] = fmtConverted(st.exact[f]);
+      }
+      st.units[f] = u;
+      save();
+      render();
+    }
+
+    unitsBtn.addEventListener('click', function () {
+      st.unitsOpen = !st.unitsOpen;
+      save();
+      render();
+    });
+
     K.workToggle(root, function () { return openWork; }, function () { render(); });
 
     root.querySelector('.calc-clear').addEventListener('click', function () {
-      st[st.system] = { order: [], text: {} };
+      st.order = [];
+      st.text = {};
+      st.exact = {};
       openWork = {};
       save();
       render();
@@ -87,25 +123,25 @@
     window.addEventListener('resize', onResize);
 
     function onType(f, text) {
-      var s = cur();
-      s.order = s.order.filter(function (k) { return k !== f; });
+      delete st.exact[f]; // typed by hand now
+      st.order = st.order.filter(function (k) { return k !== f; });
       if (String(text).trim() === '') {
-        delete s.text[f];
+        delete st.text[f];
       } else {
-        s.text[f] = text;
-        s.order.unshift(f);
+        st.text[f] = text;
+        st.order.unshift(f);
       }
       save();
       render();
     }
 
     function render() {
-      var s = cur(), units = M.UNITS[st.system];
-      var valid = s.order.filter(function (f) { return isFinite(M.parseNum(s.text[f])); });
+      var units = st.units;
+      var valid = st.order.filter(function (f) { return isFinite(M.parseNum(st.text[f])); });
       var picked = M.pickInputs(valid);
       var given = {};
-      picked.forEach(function (f) { given[f] = M.parseNum(s.text[f]); });
-      var res = M.solve(given, st.system);
+      picked.forEach(function (f) { given[f] = st.exact[f] != null ? st.exact[f] : M.parseNum(st.text[f]); });
+      var res = M.solve(given, units);
       var sol = res.solutions ? res.solutions[0] : null;
       current = { sol: sol, picked: picked };
 
@@ -117,9 +153,15 @@
           ' → ' + M.SYM[res.target];
       }
 
-      Object.keys(sysBtns).forEach(function (k) {
-        sysBtns[k].classList.toggle('is-on', k === st.system);
-        sysBtns[k].setAttribute('aria-pressed', k === st.system);
+      unitsEl.hidden = !st.unitsOpen;
+      unitsBtn.classList.toggle('is-on', st.unitsOpen);
+      unitsBtn.setAttribute('aria-expanded', st.unitsOpen);
+      UNIT_ROWS.forEach(function (r) {
+        Object.keys(unitBtns[r[0]]).forEach(function (u) {
+          var on = units[r[0]] === u;
+          unitBtns[r[0]][u].classList.toggle('is-on', on);
+          unitBtns[r[0]][u].setAttribute('aria-pressed', on);
+        });
       });
 
       M.FIELDS.forEach(function (f) {
@@ -129,11 +171,11 @@
           fields[f].box.classList.toggle('is-short-sub', units[f].length < 2);
           fields[f].input.setAttribute('aria-label', LABELS[f] + ' ' + units[f]);
         }
-        var hasText = s.text[f] != null && s.text[f] !== '';
+        var hasText = st.text[f] != null && st.text[f] !== '';
         K.paint(fields[f], {
           typed: picked.indexOf(f) >= 0,
-          text: s.text[f],
-          bad: hasText && !isFinite(M.parseNum(s.text[f])),
+          text: st.text[f],
+          bad: hasText && !isFinite(M.parseNum(st.text[f])),
           err: res.error && !res.incomplete,
           solved: sol && sol.work[f] ? M.fmt(sol.v[f]) : null
         });
