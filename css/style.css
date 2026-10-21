@@ -171,22 +171,16 @@ main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
 
 .fld[hidden] { display: none; }
 .fld.is-long-name:not(.is-flow) .fld-input { padding-left: 34px; } /* x1, y2 … */
-.fld.is-pair {
-  background: var(--out-bg);
-  border: 2px dashed var(--line);
-}
+.fld.is-pair { justify-content: flex-start; } /* plain text, no box */
+.fld.is-pair.is-right { justify-content: flex-end; }
 .pair-val {
-  display: flex;
-  flex-direction: column;
-  margin-left: 34px;
+  padding: 0 4px;
   color: var(--out);
   font-style: italic;
-  font-size: .9em;
-  line-height: 1.15;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-.fld.is-pair .fld-name { color: var(--out); }
 .fld.is-angle .fld-input { padding-right: 16px; }
 .fld-unit {
   position: absolute;
@@ -376,4 +370,5 @@ main { max-width: 560px; margin: 0 auto; padding: 12px 16px 24px; }
   .calc-legend { font-size: 11.5px; }
   .stack-opts .seg { font-size: 12.5px; }
   .calc-actions .btn { font-size: 14px; padding: 0 4px; }
+  .pair-val { font-size: 13px; padding: 0 2px; }
 }

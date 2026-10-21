@@ -80,12 +80,12 @@
       extraVals[x.key] = val;
     });
 
-    // The other corners: solved only, one box each, "x," over "y".
+    // The other corners: solved only, plain "x, y" text beside the corner
+    // (the drawing labels which corner). P3 lines up right, P4 left.
     var pairs = {};
     M.CORNERS.forEach(function (c) {
-      var box = el('div', 'fld is-out is-pair');
+      var box = el('div', 'fld is-pair' + (c === 'P3' ? ' is-right' : ''));
       box.setAttribute('aria-label', 'corner ' + c);
-      box.appendChild(el('span', 'fld-name', c));
       var val = el('div', 'pair-val');
       box.appendChild(val);
       stage.appendChild(box);
@@ -179,8 +179,7 @@
       M.CORNERS.forEach(function (c) {
         pairs[c].textContent = '';
         if (!sol) return;
-        pairs[c].appendChild(el('span', null, M.fmt(sol.v[c][0]) + ','));
-        pairs[c].appendChild(el('span', null, M.fmt(sol.v[c][1])));
+        pairs[c].textContent = M.fmt(sol.v[c][0]) + ', ' + M.fmt(sol.v[c][1]);
       });
 
       // Points along the line.
@@ -225,6 +224,16 @@
 
     function layout() {
       drawStage(stage, svg, fields, !!current.sol, current.picked);
+      // Long corner values shrink to stay on one line in their slot.
+      M.CORNERS.forEach(function (c) {
+        var val = pairs[c], room = fields[c].box.clientWidth;
+        val.style.fontSize = '';
+        var size = parseFloat(getComputedStyle(val).fontSize);
+        while (val.scrollWidth > room && size > 10) {
+          size -= 0.5;
+          val.style.fontSize = size + 'px';
+        }
+      });
     }
 
     render();
