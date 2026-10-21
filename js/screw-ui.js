@@ -45,6 +45,7 @@
       fields[f] = K.field(stage, {
         name: M.SYM[f],
         label: LABELS[f],
+        unit: { eta: '%', i: ':1' }[f],
         onInput: function (text) { onType(f, text); },
         onDone: function () { render(); }
       });
@@ -161,9 +162,14 @@
     var nut = [W * 0.66, 22, 18];              // nut center x, half-width, half-height
 
     svg.textContent = '';
-    svg.appendChild(svgEl('rect', {
-      'class': 'dg-part2' + blank + hl('T'), x: mx0, y: cl - 30, width: mx1 - mx0, height: 44, rx: 5
-    }));
+    // Motor: a solid body with cooling fins and an "M", so it can't be
+    // mistaken for an input box.
+    var my0 = cl - 30, mh = 44;
+    svg.appendChild(svgEl('rect', { 'class': 'dg-solid' + hl('T'), x: mx0, y: my0, width: mx1 - mx0, height: mh, rx: 1 }));
+    var fins = '';
+    for (var fx = mx0 + 6; fx < mx1 - 4; fx += 6) fins += 'M' + fx + ' ' + (my0 + 4) + 'v' + (mh - 8);
+    svg.appendChild(svgEl('path', { 'class': 'dg-fin', d: fins }));
+    svg.appendChild(svgEl('text', { 'class': 'dg-tag dg-label is-on-line', x: (mx0 + mx1) / 2, y: my0 + mh / 2 }, 'M'));
     svg.appendChild(svgEl('line', { 'class': 'dg-shaft', x1: mx1, y1: g1[1], x2: g1[0], y2: g1[1] }));
     svg.appendChild(svgEl('circle', { 'class': 'dg-part2' + blank + hl('i'), cx: g1[0], cy: g1[1], r: r1 }));
     svg.appendChild(svgEl('circle', { 'class': 'dg-part2' + blank + hl('i'), cx: g2[0], cy: g2[1], r: r2 }));
@@ -173,7 +179,7 @@
     for (var x = s0 + r2 + 4; x < s1 - 4; x += 9) ticks += 'M' + x + ' ' + (cl + 7) + 'l6 -14';
     svg.appendChild(svgEl('path', { 'class': 'dg-thread' + hl('p'), d: ticks }));
     svg.appendChild(svgEl('rect', {
-      'class': 'dg-part2' + blank, x: nut[0] - nut[1], y: cl - nut[2], width: nut[1] * 2, height: nut[2] * 2, rx: 4
+      'class': 'dg-solid', x: nut[0] - nut[1], y: cl - nut[2], width: nut[1] * 2, height: nut[2] * 2, rx: 2
     }));
     // Push arrow off the nut.
     var ay = cl - nut[2] - 12, ax0 = nut[0] - nut[1], ax1 = Math.min(s1, nut[0] + nut[1] + 46);

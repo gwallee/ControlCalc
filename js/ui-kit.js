@@ -32,9 +32,12 @@
 
   // An input box: label, number input, optional ° mark. Typing into a solved
   // box starts fresh, with the solved value left as a hint.
-  // opts: { name, label, angle, onInput(text), onDone() }
+  // opts: { name, label, angle, unit, onInput(text), onDone() } — angle adds
+  // a ° mark; unit puts any other short mark (%, :1) at the right.
   function field(stage, opts) {
-    var box = el('label', 'fld' + (opts.angle ? ' is-angle' : '') + (opts.name.length > 1 ? ' is-long-name' : ''));
+    var unit = opts.angle ? '°' : opts.unit;
+    var box = el('label', 'fld' + (opts.angle ? ' is-angle' : '') + (unit && !opts.angle ? ' has-unit' : '') +
+      (opts.name.length > 1 ? ' is-long-name' : ''));
     box.appendChild(el('span', 'fld-name', opts.name));
     var input = el('input', 'fld-input');
     input.type = 'text';
@@ -43,7 +46,7 @@
     input.spellcheck = false;
     input.setAttribute('aria-label', opts.label);
     box.appendChild(input);
-    if (opts.angle) box.appendChild(el('span', 'fld-unit', '°'));
+    if (unit) box.appendChild(el('span', 'fld-unit', unit));
 
     input.addEventListener('focus', function () {
       if (input.classList.contains('is-out') && !input.readOnly) { // read-only boxes keep their value
