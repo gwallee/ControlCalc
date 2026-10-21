@@ -62,10 +62,13 @@ are from the V's vertex:
 
 w and e are letters on the drawing only; their values are under More.
 
-**V gripper** — a rod held between two facing V jaws. S is the distance
-between the jaws' vertices: `S = 2·d`, so `r = (S/2)·sin(θ/2)`. Enter S
-and θ to get the rod diameter, or D and θ to get the S the jaws close to.
-Each mode keeps its own values.
+**V gripper** — a rod held between two facing V jaws, worked straight in
+D and S (S = vertex to vertex):
+
+    D = S·sin(θ/2)    t = D / (2·tan(θ/2))    g = (S − D) / 2
+
+Enter S and θ to get the rod diameter, or D and θ to get the S the jaws
+close to; any 2 of θ, D, S, t, g work. Each mode keeps its own values.
 
 ## Stack
 

@@ -444,5 +444,31 @@ test('screw: bad input', function () {
   assert.deepStrictEqual(BS.pickInputs(['F', 'T', 'i', 'p', 'eta']), ['F', 'T', 'i', 'p']);
 });
 
+test('vee gripper: formulas straight in D and S', function () {
+  var r = V.solveGripper({ S: 15, th: 90 });
+  var v = r.solutions[0].v, w = r.solutions[0].work;
+  near(v.D, 10.6066017);
+  assert.strictEqual(w.D.formula, 'D = S·sin(θ/2)');
+  assert.strictEqual(w.D.sub, 'D = 15·sin(90°/2)');
+  assert.strictEqual(w.r, undefined);
+  assert.strictEqual(w.d, undefined);
+  assert.strictEqual(V.solveGripper({ D: 10, S: 15 }).solutions[0].work.th.formula, 'θ = 2·asin(D / S)');
+  assert.ok(/D < S/.test(V.solveGripper({ D: 20, S: 15 }).error));
+});
+
+test('vee gripper: round trip over every pair', function () {
+  var F = V.GRIP_FIELDS, seed = 77;
+  function rand() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  for (var n = 0; n < 200; n++) {
+    var t0 = V.solve({ th: 10 + rand() * 160, r: 0.5 + rand() * 300 }).solutions[0].v;
+    for (var i = 0; i < F.length; i++) for (var j = i + 1; j < F.length; j++) {
+      var g = {}; g[F[i]] = t0[F[i]]; g[F[j]] = t0[F[j]];
+      var r = V.solveGripper(g);
+      assert.ok(!r.error, F[i] + ',' + F[j] + ' ' + r.error);
+      F.forEach(function (f) { near(r.solutions[0].v[f], t0[f], 1e-6, F[i] + ',' + F[j] + ' → ' + f); });
+    }
+  }
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

@@ -7,6 +7,8 @@
  *   g     vertex → part bottom      g = d − r
  *   h     vertex → part top         h = d + r
  *   S     vertex → vertex, two V jaws gripping the part: S = 2·d
+ * solveGripper() works the two-jaw case straight in D and S, no r or d:
+ *   D = S·sin(θ/2),  t = D / (2·tan(θ/2)),  g = (S − D) / 2
  *   w     contact span (output)     w = 2·t·sin(θ/2)
  *   e     contact height (output)   e = t·cos(θ/2)
  * Two values fix everything (θ and r). Works as a plain browser script
@@ -134,8 +136,72 @@
     return { solutions: [sol] };
   }
 
+  // --- two-jaw V gripper, in D and S ---------------------------------------
+
+  var GRIP_FIELDS = ['th', 'D', 'S', 't', 'g'];
+
+  // θ plus one length: the D (or S) it gives.
+  var GRIP_FROM_THETA = {
+    S: null, // S is already one of the pair
+    D: null,
+    t: { k: 'D', f: 'D = 2·t·tan(θ/2)', fn: function (v) { return 2 * v.t * tan(v.th / 2); } },
+    g: { k: 'D', f: 'D = 2·g·sin(θ/2) / (1 − sin(θ/2))', fn: function (v) { var s = sin(v.th / 2); return 2 * v.g * s / (1 - s); } }
+  };
+
+  // Two lengths: first any length that follows directly, then θ.
+  var GRIP_PAIRS = {
+    'D,S': { th: { f: 'θ = 2·asin(D / S)', fn: function (v) { return 2 * asinD(v.D / v.S); } }, need: 'D < S' },
+    'D,t': { th: { f: 'θ = 2·atan(D / (2·t))', fn: function (v) { return 2 * atanD(v.D / (2 * v.t)); } } },
+    'D,g': { pre: { k: 'S', f: 'S = D + 2·g', fn: function (v) { return v.D + 2 * v.g; } },
+      th: { f: 'θ = 2·asin(D / S)', fn: function (v) { return 2 * asinD(v.D / v.S); } } },
+    'S,g': { pre: { k: 'D', f: 'D = S − 2·g', fn: function (v) { return v.S - 2 * v.g; } }, need: '2·g < S',
+      th: { f: 'θ = 2·asin(D / S)', fn: function (v) { return 2 * asinD(v.D / v.S); } } },
+    'S,t': { th: { f: 'θ = 2·acos(2·t / S)', fn: function (v) { return 2 * acosD(2 * v.t / v.S); } }, need: '2·t < S' },
+    't,g': { th: { f: 'θ = 4·atan(t / g) − 180°', fn: function (v) { return 4 * atanD(v.t / v.g) - 180; } }, need: 't > g',
+      post: { k: 'D', f: 'D = 2·t·tan(θ/2)', fn: function (v) { return 2 * v.t * tan(v.th / 2); } } }
+  };
+
+  function solveGripper(given) {
+    var names = Object.keys(given).filter(function (f) { return GRIP_FIELDS.indexOf(f) >= 0; });
+    for (var n = 0; n < names.length; n++) {
+      var f = names[n], val = given[f];
+      if (!isFinite(val)) return { error: SYM[f] + ' is not a number' };
+      if (isAngle(f) && (val <= 0 || val >= 180)) return { error: 'θ must be between 0° and 180°' };
+      if (!isAngle(f) && val <= 0) return { error: SYM[f] + ' must be > 0' };
+    }
+    if (names.length < 2) {
+      return { incomplete: true, error: 'Enter ' + (2 - names.length) + ' more value' + (names.length ? '' : 's') };
+    }
+    var sol = { v: {}, work: {} }, v = sol.v;
+    names.forEach(function (k) { v[k] = given[k]; });
+    var rule;
+    if ('th' in v) {
+      var other = names.filter(function (k) { return k !== 'th'; })[0];
+      rule = GRIP_FROM_THETA[other];
+      if (rule) put(sol, rule.k, rule.fn(v), rule.f);
+    } else {
+      var pair = GRIP_FIELDS.filter(function (k) { return k in v; }).join(',');
+      var pr = GRIP_PAIRS[pair];
+      if (pr.pre) put(sol, pr.pre.k, pr.pre.fn(v), pr.pre.f);
+      put(sol, 'th', pr.th.fn(v), pr.th.f);
+      if (bad(v.th) || v.th <= 1e-9 || v.th >= 180 - 1e-9 || (pr.pre && v[pr.pre.k] <= 0)) {
+        return { error: 'No fit: need ' + (pr.need || 'a smaller part') };
+      }
+      if (pr.post) put(sol, pr.post.k, pr.post.fn(v), pr.post.f);
+    }
+    if (!('D' in v)) put(sol, 'D', v.S * sin(v.th / 2), 'D = S·sin(θ/2)');
+    if (!('S' in v)) put(sol, 'S', v.D / sin(v.th / 2), 'S = D / sin(θ/2)');
+    if (!('t' in v)) put(sol, 't', v.D / (2 * tan(v.th / 2)), 't = D / (2·tan(θ/2))');
+    if (!('g' in v)) put(sol, 'g', (v.S - v.D) / 2, 'g = (S − D) / 2');
+    put(sol, 'w', 2 * v.t * sin(v.th / 2), 'w = 2·t·sin(θ/2)');
+    put(sol, 'e', v.t * Math.cos(v.th / 2 * RAD), 'e = t·cos(θ/2)');
+    return { solutions: [sol] };
+  }
+
   var api = {
     FIELDS: FIELDS,
+    GRIP_FIELDS: GRIP_FIELDS,
+    solveGripper: solveGripper,
     EXTRAS: EXTRAS,
     SYM: SYM,
     isAngle: isAngle,

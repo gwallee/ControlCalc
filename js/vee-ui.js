@@ -7,7 +7,8 @@
  *   gripper — a rod held between two V jaws: S is vertex to vertex, D sits
  *             in the part, θ under the bottom vertex, g level with the part
  *             bottom, t outside the lower-left contact.
- * Radius has no box (r is still solved and shown in the work). Each mode
+ * In the nest, radius has no box (r is still solved and shown in the work);
+ * the gripper works straight in D and S, with no r or d at all. Each mode
  * keeps its own values. */
 (function (root) {
   'use strict';
@@ -144,7 +145,8 @@
       var picked = M.pickInputs(valid);
       var given = {};
       picked.forEach(function (f) { given[f] = M.parseNum(s.text[f]); });
-      var res = M.solve(given);
+      var grip = st.mode === 'gripper';
+      var res = grip ? M.solveGripper(given) : M.solve(given); // gripper works in D and S, no r / d
       var sol = res.solutions ? res.solutions[0] : null;
       current = { sol: sol, picked: picked };
 
@@ -181,7 +183,7 @@
         extraVals[x.key].textContent = sol ? M.fmt(sol.v[x.key]) : '—';
       });
 
-      K.renderWork(workEl, sol, M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; })
+      K.renderWork(workEl, sol, (grip ? M.GRIP_FIELDS : M.FIELDS).filter(function (f) { return picked.indexOf(f) < 0; })
         .concat(M.EXTRAS), openWork);
       layout();
     }
