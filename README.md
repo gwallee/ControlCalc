@@ -15,6 +15,8 @@ web app (PWA) — open it on a phone, add to home screen.
   optional layers, serpentine, and XYZ offsets from a pitch.
 - **Line** — two points (line ends or rectangle corners) ↔ length / width,
   line length and angle; N evenly spaced points along the line.
+- **Screw** — ball screw thrust from motor torque, gear ratio, lead and
+  efficiency, or any of those from the others.
 
 ## Run
 
@@ -104,3 +106,19 @@ lists each one's x / y:
 
     sx = L / (N − 1),  sy = W / (N − 1)
     x_k = x1 + (k − 1)·sx,  y_k = y1 + (k − 1)·sy,  k = 1 … N
+
+## Screw
+
+Ball screw thrust. Enter any 4 of the 5; the last one solves (torque →
+thrust, or the torque a push force needs, or the lead, ratio or
+efficiency):
+
+    F = 2π·(η/100)·i·T / (p/1000)
+
+| | |
+|---|---|
+| T | motor torque, N·m |
+| i | gear ratio, motor turns per screw turn (2 = 2:1 reduction) |
+| p | screw lead, mm per screw turn |
+| η | efficiency, % |
+| F | thrust, N (kgf / lbf, and T in lbf·in, under Units) |

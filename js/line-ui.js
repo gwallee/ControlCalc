@@ -282,13 +282,14 @@
       });
 
     var nrm = [-Math.sin(ang), -Math.cos(ang)]; // screen normal, up-left of the line
-    var c1 = hw + 2, c2 = W / 2, c3 = W - hw - 2; // three box slots across
+    // x and y of a point sit side by side; corner readouts take the far ends.
+    var c1 = hw + 2, c3 = W - hw - 2, pair = bw + 6;
     K.placeBoxes(fields, [
       { f: 'P4', x: c1, y: rowTop },
-      { f: 'x2', x: c2, y: rowTop },
+      { f: 'x2', x: c3 - pair, y: rowTop },
       { f: 'y2', x: c3, y: rowTop },
       { f: 'x1', x: c1, y: rowBot },
-      { f: 'y1', x: c2, y: rowBot },
+      { f: 'y1', x: c1 + pair, y: rowBot },
       { f: 'P3', x: c3, y: rowBot },
       { f: 'L', x: mid[0], y: p1[1] },            // on the bottom edge
       { f: 'W', x: p2[0], y: mid[1] + 24 },        // on the right edge

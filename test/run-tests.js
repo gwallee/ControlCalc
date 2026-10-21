@@ -394,5 +394,45 @@ test('line: points along the line match the spreadsheet', function () {
   assert.ok(/whole/.test(LN.points(v, 2.5).error));
 });
 
+// ===== Ball screw =====
+var BS = require('../js/screw-math.js');
+
+test('screw: torque → thrust, 2:1, 10 mm lead, 90%', function () {
+  var r = BS.solve({ T: 2, i: 2, p: 10, eta: 90 });
+  assert.strictEqual(r.target, 'F');
+  var v = r.solutions[0].v;
+  near(v.F, 2 * Math.PI * 0.9 * 2 * 2 / 0.01); // 2261.9 N
+  near(v.Fkgf, v.F / 9.80665); near(v.Flbf, v.F / 4.4482216152605);
+  var w = r.solutions[0].work.F;
+  assert.strictEqual(w.formula, 'F = 2π·(η/100)·i·T / (p/1000)');
+  assert.strictEqual(w.sub, 'F = 2π·(90/100)·2·2 / (10/1000)');
+  assert.strictEqual(w.result, 'F = 2261.947 N');
+});
+
+test('screw: thrust → required torque', function () {
+  var v = BS.solve({ F: 2261.946710584651, i: 2, p: 10, eta: 90 }).solutions[0].v;
+  near(v.T, 2);
+});
+
+test('screw: any 4 solve the 5th', function () {
+  var truth = { T: 1.27, i: 3.5, p: 16, eta: 85 };
+  truth.F = BS.solve(truth).solutions[0].v.F;
+  BS.FIELDS.forEach(function (miss) {
+    var g = {};
+    BS.FIELDS.forEach(function (f) { if (f !== miss) g[f] = truth[f]; });
+    var r = BS.solve(g);
+    assert.strictEqual(r.target, miss);
+    near(r.solutions[0].v[miss], truth[miss], 1e-9, miss);
+  });
+});
+
+test('screw: bad input', function () {
+  assert.ok(BS.solve({ T: 1, i: 2, p: 5 }).incomplete);
+  assert.ok(/≤ 100/.test(BS.solve({ T: 1, i: 2, p: 5, eta: 120 }).error));
+  assert.ok(/over 100/.test(BS.solve({ T: 1, i: 1, p: 10, F: 5000 }).error));
+  assert.ok(/> 0/.test(BS.solve({ T: 0, i: 2, p: 5, eta: 90 }).error));
+  assert.deepStrictEqual(BS.pickInputs(['F', 'T', 'i', 'p', 'eta']), ['F', 'T', 'i', 'p']);
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);
