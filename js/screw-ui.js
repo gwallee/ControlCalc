@@ -35,8 +35,7 @@
     var extrasBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
     var legend = root.querySelector('.calc-legend');
-    legend.appendChild(el('div', null, 'T N·m · p mm per screw turn · F N · η %'));
-    legend.appendChild(el('div', null, 'i = motor turns per screw turn (2 = 2:1)'));
+    legend.appendChild(el('div', null, 'i = motor turns per screw turn (2 = 2:1) · p = lead per screw turn'));
     var current = { sol: null, picked: [] };
 
     function save() { K.save(STORE_KEY, st); }
@@ -46,6 +45,7 @@
         name: M.SYM[f],
         label: LABELS[f],
         unit: { eta: '%', i: ':1' }[f],
+        sub: { T: 'N·m', p: 'mm', F: 'N' }[f],
         onInput: function (text) { onType(f, text); },
         onDone: function () { render(); }
       });

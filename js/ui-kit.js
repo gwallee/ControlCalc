@@ -32,13 +32,16 @@
 
   // An input box: label, number input, optional ° mark. Typing into a solved
   // box starts fresh, with the solved value left as a hint.
-  // opts: { name, label, angle, unit, onInput(text), onDone() } — angle adds
-  // a ° mark; unit puts any other short mark (%, :1) at the right.
+  // opts: { name, label, angle, unit, sub, onInput(text), onDone() } — angle
+  // adds a ° mark; unit puts any other short mark (%, :1) at the right; sub
+  // is a unit set small under the name, on the left (N·m, mm).
   function field(stage, opts) {
     var unit = opts.angle ? '°' : opts.unit;
     var box = el('label', 'fld' + (opts.angle ? ' is-angle' : '') + (unit && !opts.angle ? ' has-unit' : '') +
-      (opts.name.length > 1 ? ' is-long-name' : ''));
-    box.appendChild(el('span', 'fld-name', opts.name));
+      (opts.name.length > 1 ? ' is-long-name' : '') + (opts.sub ? ' has-sub' + (opts.sub.length < 2 ? ' is-short-sub' : '') : ''));
+    var name = el('span', 'fld-name', opts.name);
+    if (opts.sub) name.appendChild(el('span', 'fld-sub', opts.sub));
+    box.appendChild(name);
     var input = el('input', 'fld-input');
     input.type = 'text';
     input.inputMode = 'decimal';
@@ -63,6 +66,18 @@
     return { box: box, input: input, angle: !!opts.angle };
   }
 
+  // Shrink a box's text until its value fits (down to 11px), so long values
+  // never get cut off. Called once the box has its final width.
+  function fit(input) {
+    input.style.fontSize = '';
+    if (!input.value || input.clientWidth === 0) return;
+    var size = parseFloat(getComputedStyle(input).fontSize);
+    while (input.scrollWidth > input.clientWidth && size > 11) {
+      size -= 0.5;
+      input.style.fontSize = size + 'px';
+    }
+  }
+
   // Show a box as typed (is-in) or solved (is-out). Leaves the value alone
   // while the user is typing in it.
   // s: { typed, text, bad, err, solved }
@@ -74,6 +89,7 @@
     if (document.activeElement === fd.input) return;
     fd.input.placeholder = '';
     fd.input.value = isIn ? s.text : (s.solved == null ? '' : s.solved);
+    if (fd.box.classList.contains('is-flow')) fit(fd.input); // in-flow boxes are already sized
   }
 
   // Push overlapping boxes apart, then keep them inside the stage.
@@ -120,6 +136,8 @@
       s.fontSize = font;
       s.left = (b.x - hw) + 'px';
       s.top = (b.y - hh) + 'px';
+      var input = fields[b.f].input;
+      if (input && document.activeElement !== input) fit(input);
     });
   }
 
