@@ -34,7 +34,7 @@
   // box starts fresh, with the solved value left as a hint.
   // opts: { name, label, angle, onInput(text), onDone() }
   function field(stage, opts) {
-    var box = el('label', 'fld' + (opts.angle ? ' is-angle' : ''));
+    var box = el('label', 'fld' + (opts.angle ? ' is-angle' : '') + (opts.name.length > 1 ? ' is-long-name' : ''));
     box.appendChild(el('span', 'fld-name', opts.name));
     var input = el('input', 'fld-input');
     input.type = 'text';

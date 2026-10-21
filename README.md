@@ -13,6 +13,8 @@ web app (PWA) — open it on a phone, add to home screen.
   radius/diameter, and the distances from the vertex; the rest are solved.
 - **Stack** — part # ↔ col / row / layer for placing parts in a grid, with
   optional layers, serpentine, and XYZ offsets from a pitch.
+- **Line** — two points (line ends or rectangle corners) ↔ length / width,
+  line length and angle.
 
 ## Run
 
@@ -79,3 +81,19 @@ col / C and row / R. With 1st part = 1, n becomes (n − 1).
   `col = C − n MOD C`. Each layer starts again at 1,1.
 - **XYZ** — enter pitches px / py / pz (negative for direction):
   `X = (col − 1)·px`, `Y = (row − 1)·py`, `Z = (layer − 1)·pz`.
+
+## Line
+
+Two points P1 (x1, y1) and P2 (x2, y2): the ends of a line, or the
+diagonal corners of a rectangle. Any 4 values that fix the line solve it,
+for example both points, or P1 plus a length and angle.
+
+| | |
+|---|---|
+| L, W | rectangle length / width, signed: `x2 − x1`, `y2 − y1` |
+| D | line length / diagonal: `√(L² + W²)` |
+| θ | line angle, CCW from +X, −180°…180°: `atan2(W, L)` |
+| cx, cy, area | center and area, under More |
+
+D with L (or W) has two answers, the other side pointing either way; a
+toggle picks one.

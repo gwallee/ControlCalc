@@ -308,5 +308,72 @@ test('stack: position → part # round trip, every option', function () {
   });
 });
 
+// ===== Line / rectangle =====
+var LN = require('../js/line-math.js');
+
+test('line: corners → L, W, D, θ, center', function () {
+  var v = LN.solve({ x1: 10, y1: 20, x2: 40, y2: 60 }).solutions[0].v;
+  near(v.L, 30); near(v.W, 40); near(v.D, 50); near(v.th, Math.atan2(40, 30) * 180 / Math.PI);
+  near(v.cx, 25); near(v.cy, 40); near(v.area, 1200);
+});
+
+test('line: angle in every quadrant', function () {
+  near(LN.solve({ x1: 0, y1: 0, x2: -1, y2: 1 }).solutions[0].v.th, 135);
+  near(LN.solve({ x1: 0, y1: 0, x2: -1, y2: -1 }).solutions[0].v.th, -135);
+  near(LN.solve({ x1: 5, y1: 5, x2: 5, y2: 2 }).solutions[0].v.th, -90);
+});
+
+test('line: polar from P1', function () {
+  var v = LN.solve({ x1: 100, y1: 50, D: 10, th: 30 }).solutions[0].v;
+  near(v.x2, 100 + 10 * Math.cos(Math.PI / 6)); near(v.y2, 55);
+});
+
+test('line: D with L gives both W signs', function () {
+  var r = LN.solve({ x1: 0, y1: 0, D: 5, L: 3 });
+  assert.strictEqual(r.solutions.length, 2);
+  near(r.solutions[0].v.y2, 4); near(r.solutions[1].v.y2, -4);
+  assert.ok(/≤ D/.test(LN.solve({ x1: 0, y1: 0, D: 2, L: 3 }).error));
+});
+
+test('line: work substitutes negatives in parentheses', function () {
+  var w = LN.solve({ x1: -5, y1: 0, x2: 5, y2: 0 }).solutions[0].work;
+  assert.strictEqual(w.L.sub, 'L = 5 − (-5)');
+  assert.strictEqual(w.th.formula, 'θ = atan2(W, L)');
+});
+
+test('line: pickInputs skips values that over-determine', function () {
+  assert.deepStrictEqual(LN.pickInputs(['D', 'L', 'W', 'x1', 'y1']), ['D', 'L', 'x1', 'y1']);
+  assert.deepStrictEqual(LN.pickInputs(['x2', 'x1', 'L', 'y1', 'W']), ['x2', 'x1', 'y1', 'W']);
+  assert.ok(LN.solve({ x1: 1, y1: 2, x2: 3 }).incomplete);
+});
+
+test('line: round trip over every input set of 4', function () {
+  var F = LN.FIELDS, sets = [];
+  (function walk(start, cur) {
+    if (cur.length === 4) {
+      if (LN.pickInputs(cur).length === 4 && !LN.solve(cur.reduce(function (o, f) { o[f] = 1; return o; }, { })).incomplete) sets.push(cur);
+      return;
+    }
+    for (var i = start; i < F.length; i++) walk(i + 1, cur.concat(F[i]));
+  })(0, []);
+  assert.ok(sets.length >= 30, 'only ' + sets.length + ' sets');
+  var seed = 4242;
+  function rand() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  for (var n = 0; n < 200; n++) {
+    var t = { x1: rand() * 2000 - 1000, y1: rand() * 2000 - 1000, L: rand() * 800 - 400, W: rand() * 800 - 400 };
+    t.x2 = t.x1 + t.L; t.y2 = t.y1 + t.W; t.D = Math.hypot(t.L, t.W); t.th = Math.atan2(t.W, t.L) * 180 / Math.PI;
+    sets.forEach(function (set) {
+      var g = {};
+      set.forEach(function (f) { g[f] = t[f]; });
+      var r = LN.solve(g);
+      assert.ok(!r.error, set.join(',') + ' ' + r.error);
+      var ok = r.solutions.some(function (s) {
+        return F.every(function (f) { return Math.abs(s.v[f] - t[f]) <= 1e-6 * Math.max(1, Math.abs(t[f])); });
+      });
+      assert.ok(ok, 'no match for ' + set.join(','));
+    });
+  }
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

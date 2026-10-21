@@ -38,7 +38,7 @@
     var extrasEl = root.querySelector('.calc-extras');
     var extrasBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
-    var legend = root.querySelector('.vee-legend');
+    var legend = root.querySelector('.calc-legend');
     legend.appendChild(el('div', null, 'From vertex: g bottom · e contacts · d center · h top'));
     legend.appendChild(el('div', null, 't along face · w contact span'));
     var current = { sol: null, picked: [] };

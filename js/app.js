@@ -6,7 +6,8 @@
   var CALCS = [
     { id: 'triangle', label: 'Triangle', mount: function (el) { TriangleUI.mount(el); } },
     { id: 'vee', label: 'Circle in V', mount: function (el) { VeeUI.mount(el); } },
-    { id: 'stack', label: 'Stack', mount: function (el) { StackUI.mount(el); } }
+    { id: 'stack', label: 'Stack', mount: function (el) { StackUI.mount(el); } },
+    { id: 'line', label: 'Line', mount: function (el) { LineUI.mount(el); } }
   ];
 
   document.getElementById('build').textContent = ROBOTCALC_BUILD;
