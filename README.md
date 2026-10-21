@@ -14,7 +14,7 @@ web app (PWA) — open it on a phone, add to home screen.
 - **Stack** — part # ↔ col / row / layer for placing parts in a grid, with
   optional layers, serpentine, and XYZ offsets from a pitch.
 - **Line** — two points (line ends or rectangle corners) ↔ length / width,
-  line length and angle.
+  line length and angle; N evenly spaced points along the line.
 
 ## Run
 
@@ -97,3 +97,9 @@ for example both points, or P1 plus a length and angle.
 
 D with L (or W) has two answers, the other side pointing either way; a
 toggle picks one.
+
+**Points** spaces N points evenly from P1 to P2, both ends included, and
+lists each one's x / y:
+
+    sx = L / (N − 1),  sy = W / (N − 1)
+    x_k = x1 + (k − 1)·sx,  y_k = y1 + (k − 1)·sy,  k = 1 … N

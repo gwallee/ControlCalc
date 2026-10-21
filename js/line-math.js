@@ -5,6 +5,7 @@
  *   D = √(L² + W²)             (line length, rectangle diagonal)
  *   θ = atan2(W, L)            (line angle, CCW from +X, −180°…180°)
  *   cx, cy = midpoint, area = |L·W|   (solved only)
+ * points(): N points evenly spaced from P1 to P2, both ends included.
  * Unknowns are x1, y1, L, W, so any 4 independent values solve it. Works as
  * a plain browser script (window.LineMath) and under node. */
 (function (root) {
@@ -143,10 +144,37 @@
     return { solutions: [finish(sol)] };
   }
 
+  // N evenly spaced points from P1 to P2 (both ends), on a solved line v.
+  // Returns { points: [[x, y], …], v, work } or { error }.
+  function points(v, N) {
+    if (!isFinite(N) || Math.floor(N) !== N || N < 2) return { error: 'N must be a whole number ≥ 2' };
+    var out = { v: { N: N, L: v.L, W: v.W, D: v.D, x1: v.x1, y1: v.y1 }, work: {} };
+    var segs = N - 1;
+    function put2(f, value, formula, sub) {
+      out.v[f] = value;
+      out.work[f] = { formula: formula, sub: sub, result: formula.split('=')[0].trim() + ' = ' + fmt(value) };
+    }
+    put2('sx', v.L / segs, 'sx = L / (N − 1)', 'sx = ' + show('L', v.L) + ' / (' + N + ' − 1)');
+    put2('sy', v.W / segs, 'sy = W / (N − 1)', 'sy = ' + show('W', v.W) + ' / (' + N + ' − 1)');
+    put2('s', v.D / segs, 's = D / (N − 1)', 's = ' + fmt(v.D) + ' / (' + N + ' − 1)');
+    out.work.pt = {
+      formula: 'x_k = x1 + (k − 1)·sx,  y_k = y1 + (k − 1)·sy',
+      sub: 'x_k = ' + show('x1', v.x1) + ' + (k − 1)·' + show('sx', out.v.sx) +
+        ',  y_k = ' + show('y1', v.y1) + ' + (k − 1)·' + show('sy', out.v.sy),
+      result: 'k = 1 … ' + N
+    };
+    out.points = [];
+    for (var k = 0; k < N; k++) {
+      // The last point is P2 exactly, not P1 plus rounded steps.
+      out.points.push(k === segs ? [v.x2, v.y2] : [v.x1 + k * out.v.sx, v.y1 + k * out.v.sy]);
+    }
+    return out;
+  }
+
   var api = {
     FIELDS: FIELDS, EXTRAS: EXTRAS, SYM: SYM,
     isAngle: isAngle, fmt: fmt, fmtField: fmtField, parseNum: core.parseNum,
-    pickInputs: pickInputs, solve: solve
+    pickInputs: pickInputs, solve: solve, points: points
   };
 
   if (typeof module === 'object' && module.exports) module.exports = api;

@@ -375,5 +375,19 @@ test('line: round trip over every input set of 4', function () {
   }
 });
 
+test('line: points along the line match the spreadsheet', function () {
+  var v = LN.solve({ x1: 3.664, y1: -0.112, x2: 772.866, y2: 0.3905 }).solutions[0].v;
+  var r = LN.points(v, 4);
+  var want = [[3.664, -0.112], [260.06466666666665, 0.0555], [516.4653333333333, 0.223], [772.866, 0.3905]];
+  assert.strictEqual(r.points.length, 4);
+  r.points.forEach(function (p, i) { near(p[0], want[i][0]); near(p[1], want[i][1]); });
+  near(r.v.sx, 256.40066666666667);
+  assert.strictEqual(r.work.sx.sub, 'sx = 769.202 / (4 − 1)');
+  var w = LN.solve({ x1: 5.141, y1: 358.687, x2: 770.794, y2: 359.594 }).solutions[0].v;
+  near(LN.points(w, 4).points[2][1], 359.2916666666667);
+  assert.ok(/≥ 2/.test(LN.points(v, 1).error));
+  assert.ok(/whole/.test(LN.points(v, 2.5).error));
+});
+
 console.log(passed + ' passed, ' + failed + ' failed');
 process.exit(failed ? 1 : 0);

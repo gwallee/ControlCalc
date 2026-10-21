@@ -1,7 +1,8 @@
 /* Line / rectangle screen. Math lives in line-math.js.
  * Fixed drawing: a rectangle with P1 bottom-left and P2 top-right, the line
  * being its diagonal. x1 / y1 under P1, x2 / y2 over P2, L along the bottom
- * edge, W up the right edge, D on the diagonal, θ in the arc at P1. */
+ * edge, W up the right edge, D on the diagonal, θ in the arc at P1.
+ * Points (behind a button) spaces N points from P1 to P2 and lists them. */
 (function (root) {
   'use strict';
 
@@ -17,7 +18,10 @@
   function load() {
     var s = K.load(STORE_KEY);
     var ok = Array.isArray(s.order) && s.text;
-    return { order: ok ? s.order : [], text: ok ? s.text : {}, pick: s.pick || 0, extras: !!s.extras };
+    return {
+      order: ok ? s.order : [], text: ok ? s.text : {}, pick: s.pick || 0, extras: !!s.extras,
+      pts: !!s.pts, N: s.N != null ? String(s.N) : ''
+    };
   }
 
   function mount(container) {
@@ -34,6 +38,8 @@
     var extrasEl = root.querySelector('.calc-extras');
     var extrasBtn = root.querySelector('.calc-extras-btn');
     var svg = root.querySelector('.calc-diagram');
+    var ptsEl = root.querySelector('.line-pts'), ptsBtn = root.querySelector('.line-pts-btn');
+    var ptsTable = root.querySelector('.line-pts-table'), ptsStep = root.querySelector('.line-pts-step');
     var legend = root.querySelector('.calc-legend');
     legend.appendChild(el('div', null, 'L = x2 − x1 · W = y2 − y1 (signed)'));
     legend.appendChild(el('div', null, 'D = line length · θ = angle CCW from +X'));
@@ -49,6 +55,19 @@
         onInput: function (text) { onType(f, text); },
         onDone: function () { render(); }
       });
+    });
+
+    // N for the points panel: always an input.
+    var nField = K.field(root.querySelector('.line-pts-n'), {
+      name: 'N', label: 'number of points N',
+      onInput: function (text) { st.N = text; save(); render(); },
+      onDone: function () { render(); }
+    });
+    nField.box.classList.add('is-flow');
+    ptsBtn.addEventListener('click', function () {
+      st.pts = !st.pts;
+      save();
+      render();
     });
 
     EXTRAS.forEach(function (x) {
@@ -144,8 +163,43 @@
         extraVals[x.key].textContent = sol ? M.fmt(sol.v[x.key]) : '—';
       });
 
-      K.renderWork(workEl, sol, M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; })
-        .concat(M.EXTRAS), openWork);
+      // Points along the line.
+      ptsEl.hidden = !st.pts;
+      ptsBtn.classList.toggle('is-on', st.pts);
+      ptsBtn.setAttribute('aria-expanded', st.pts);
+      var nText = String(st.N || '').trim(), pr = null;
+      K.paint(nField, { typed: nText !== '', text: st.N, bad: nText !== '' && !isFinite(M.parseNum(nText)) });
+      ptsTable.textContent = '';
+      ptsStep.textContent = '';
+      if (st.pts && sol && nText !== '') {
+        pr = M.points(sol.v, M.parseNum(nText));
+        if (pr.error) {
+          ptsStep.textContent = pr.error;
+          pr = null;
+        } else {
+          ptsStep.textContent = 'step  x ' + M.fmt(pr.v.sx) + '  ·  y ' + M.fmt(pr.v.sy) + '  ·  along ' + M.fmt(pr.v.s);
+          var head = el('div', 'pt-row pt-head');
+          ['#', 'x', 'y'].forEach(function (h) { head.appendChild(el('span', null, h)); });
+          ptsTable.appendChild(head);
+          pr.points.forEach(function (pt, i) {
+            var row = el('div', 'pt-row');
+            row.appendChild(el('span', null, String(i + 1)));
+            row.appendChild(el('span', null, M.fmt(pt[0])));
+            row.appendChild(el('span', null, M.fmt(pt[1])));
+            ptsTable.appendChild(row);
+          });
+        }
+      } else if (st.pts) {
+        ptsStep.textContent = sol ? 'Enter N, the number of points (ends included)' : 'Solve the line first';
+      }
+
+      var keys = M.FIELDS.filter(function (f) { return picked.indexOf(f) < 0; }).concat(M.EXTRAS);
+      var shown = sol;
+      if (pr) {
+        shown = { v: sol.v, work: Object.assign({}, sol.work, pr.work) };
+        keys = keys.concat(['sx', 'sy', 's', 'pt']);
+      }
+      K.renderWork(workEl, shown, keys, openWork);
       layout();
     }
 
